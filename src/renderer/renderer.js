@@ -1,6 +1,7 @@
 // --- STATE ---
 let settings = {
-  playMusic: true
+  playMusic: true,
+  exitOnLaunch: false,
 };
 
 // --- DOM ELEMENTS ---
@@ -29,6 +30,7 @@ const disabledModsList = document.getElementById('disabled-mods-list');
 
 // Settings Page
 const musicToggle = document.getElementById('setting-music-toggle');
+const exitOnLaunchToggle = document.getElementById('setting-exit-toggle');
 
 
 // --- WINDOW CONTROLS ---
@@ -71,6 +73,7 @@ navButtons.forEach(button => {
 // Settings
 function applySettings() {
   musicToggle.checked = settings.playMusic ?? true;
+  exitOnLaunchToggle.checked = settings.exitOnLaunch ?? false;
   if (settings.playMusic) {
     bgm.play().catch(e => console.error("Audio playback failed:", e));
   } else {
@@ -88,6 +91,11 @@ musicToggle.addEventListener('change', () => {
   saveSettings();
 });
 
+exitOnLaunchToggle.addEventListener('change', () => {
+  settings.exitOnLaunch = exitOnLaunchToggle.checked;
+  saveSettings();
+});
+
 
 // Home Page
 startGameBtn.addEventListener('click', async () => {
@@ -95,15 +103,30 @@ startGameBtn.addEventListener('click', async () => {
   startGameBtn.querySelector('span').textContent = 'LAUNCHING...';
   startGameError.textContent = '';
   
-  const result = await window.launcher.startGame();
+  if (settings.playMusic) {
+    bgm.muted = true;
+  }
+
+  const result = await window.launcher.startGame(settings);
   if (result.error) {
     startGameError.textContent = result.error;
-  }
-  
-  setTimeout(() => {
     startGameBtn.disabled = false;
     startGameBtn.querySelector('span').textContent = 'START GAME';
-  }, 3000);
+    if (settings.playMusic) {
+      bgm.muted = false;
+    }
+  } else if (result.action === 'quitting') {
+    startGameBtn.querySelector('span').textContent = 'EXITING...';
+  }
+  // If minimized, button stays disabled until game closes
+});
+
+window.launcher.onGameClosed(() => {
+  if (settings.playMusic) {
+      bgm.muted = false;
+  }
+  startGameBtn.disabled = false;
+  startGameBtn.querySelector('span').textContent = 'START GAME';
 });
 
 

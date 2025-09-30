@@ -1,7 +1,7 @@
 const { app, BrowserWindow, Menu, nativeTheme, ipcMain, globalShortcut } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { execFile } = require('child_process');
+const { spawn } = require('child_process');
 const WindowState = require('electron-window-state');
 const { XMLParser } = require('fast-xml-parser');
 
@@ -150,18 +150,49 @@ ipcMain.handle('launcher:save-settings', async (_, settings) => {
   }
 });
 
+let gameProcess = null;
+
 // Launch game
-ipcMain.handle('launcher:start-game', () => {
+ipcMain.handle('launcher:start-game', async (_, settings) => {
+  if (gameProcess) {
+    return { error: 'Game is already running.' };
+  }
   if (!fs.existsSync(GAME_EXE_PATH)) {
     return { error: `7DaysToDie.exe not found in the launcher directory!` };
   }
   try {
-    execFile(GAME_EXE_PATH, (error) => {
-      if (error) throw error;
+    const child = spawn(GAME_EXE_PATH, [], {
+      detached: true,
+      stdio: 'ignore',
+      cwd: CWD,
     });
-    return { success: true };
+    
+    child.unref();
+    gameProcess = child;
+
+    if (settings.exitOnLaunch) {
+      setTimeout(() => app.quit(), 500);
+      return { success: true, action: 'quitting' };
+    }
+
+    mainWindow?.minimize();
+    
+    child.on('exit', (code) => {
+      console.log(`Game process exited with code ${code}`);
+      gameProcess = null;
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        if(mainWindow.isMinimized()) {
+            mainWindow.restore();
+        }
+        mainWindow.focus();
+        mainWindow.webContents.send('game:closed');
+      }
+    });
+
+    return { success: true, action: 'minimized' };
   } catch (e) {
     console.error("Failed to launch game:", e);
+    gameProcess = null;
     return { error: e.message };
   }
 });

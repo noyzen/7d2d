@@ -16,7 +16,8 @@ contextBridge.exposeInMainWorld('windowControls', {
 contextBridge.exposeInMainWorld('launcher', {
   getInitialData: () => ipcRenderer.invoke('launcher:get-initial-data'),
   saveSettings: (settings) => ipcRenderer.invoke('launcher:save-settings', settings),
-  startGame: () => ipcRenderer.invoke('launcher:start-game'),
+  startGame: (settings) => ipcRenderer.invoke('launcher:start-game', settings),
   getMods: () => ipcRenderer.invoke('launcher:get-mods'),
   toggleMod: (args) => ipcRenderer.invoke('launcher:toggle-mod', args),
+  onGameClosed: (callback) => ipcRenderer.on('game:closed', () => callback()),
 });
