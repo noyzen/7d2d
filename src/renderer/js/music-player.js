@@ -62,23 +62,10 @@ function playTrack(index) {
     if (index < 0 || index >= playlist.length) return;
     currentIndex = index;
     audioEl.src = playlist[currentIndex];
-    
-    // The visualizer requires a user interaction to start the AudioContext.
-    // We attempt to play, and if successful, we know we can init the visualizer.
-    const playPromise = audioEl.play();
-    if (playPromise !== undefined) {
-        playPromise.then(() => {
-            isPlaying = true;
-            updateUI();
-            if (!audioContext) {
-                setupVisualizer();
-            }
-        }).catch(error => {
-            console.error("Audio playback failed:", error);
-            isPlaying = false;
-            updateUI();
-        });
-    }
+    audioEl.play().catch(error => {
+        console.error("Audio playback failed:", error);
+        // The 'pause' event listener will correctly update the UI state
+    });
 }
 
 function togglePlayPause() {
@@ -87,8 +74,6 @@ function togglePlayPause() {
     } else {
         audioEl.play().catch(e => console.error("Could not resume playback:", e));
     }
-    isPlaying = !isPlaying;
-    updateUI();
 }
 
 function playNext() {
@@ -195,6 +180,10 @@ export function init(bgmPaths) {
     audioEl.addEventListener('ended', playNext);
     audioEl.addEventListener('play', () => {
         isPlaying = true;
+        if (!audioContext) {
+            // First time playing via user interaction, set up the visualizer.
+            setupVisualizer();
+        }
         if (audioContext && audioContext.state === 'suspended') {
             audioContext.resume();
         }
