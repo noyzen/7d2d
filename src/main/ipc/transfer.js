@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const { spawn } = require('child_process');
-const { CWD } = require('../constants');
+const { CWD, LAUNCHER_FILES_PATH } = require('../constants');
 const lanIpc = require('./lan');
 
 let mainWindow;
@@ -134,8 +134,9 @@ function handleDownloadGame() {
             for await (const chunk of fileListResponse) { fileListJson += chunk; }
             const allFiles = JSON.parse(fileListJson);
 
+            // Filter files based on download type
             const filesToDownload = type === 'launcher' 
-                ? allFiles.filter(f => f.path === 'LauncherFiles' || f.path.startsWith('LauncherFiles/') || path.basename(f.path) === '7d2dLauncher.exe')
+                ? allFiles.filter(f => f.path === 'LauncherFiles' || f.path.startsWith('LauncherFiles/'))
                 : allFiles;
 
             const totalSize = filesToDownload.filter(f => f.type === 'file').reduce((sum, f) => sum + f.size, 0);
@@ -143,8 +144,9 @@ function handleDownloadGame() {
             let lastProgressTime = Date.now();
             let lastDownloadedSize = 0;
 
-            // 2. Clear target directory
             const tempSuffix = '.7d2d-dl-new';
+
+            // 2. Clear target directory if needed
             if (type === 'full') {
                 const entries = await fs.promises.readdir(CWD);
                 const exePath = app.getPath('exe');
@@ -159,7 +161,7 @@ function handleDownloadGame() {
             // 3. Download files
             for (let i = 0; i < filesToDownload.length; i++) {
                 const file = filesToDownload[i];
-                const localPath = path.join(CWD, type === 'launcher' ? file.path + tempSuffix : file.path);
+                const localPath = path.join(CWD, type === 'launcher' ? file.path.replace('LauncherFiles', 'LauncherFiles' + tempSuffix) : file.path);
 
                 if (file.type === 'dir') {
                     await fs.promises.mkdir(localPath, { recursive: true });
@@ -191,70 +193,14 @@ function handleDownloadGame() {
                 }
             }
 
-            // 4. Handle launcher update
+            // 4. Finalize launcher files update (no restart needed)
             if (type === 'launcher') {
-                // For non-windows, we can't do a self-update script. We provide manual instructions.
-                if (process.platform !== 'win32') {
-                    const manualUpdatePath = path.join(CWD, 'LauncherUpdate_new');
-                    if (fs.existsSync(manualUpdatePath)) {
-                        await fs.promises.rm(manualUpdatePath, { recursive: true, force: true });
-                    }
-                    await fs.promises.mkdir(manualUpdatePath, { recursive: true });
-                    
-                    await fs.promises.rename(path.join(CWD, '7d2dLauncher.exe' + tempSuffix), path.join(manualUpdatePath, '7d2dLauncher.exe'));
-                    await fs.promises.rename(path.join(CWD, 'LauncherFiles' + tempSuffix), path.join(manualUpdatePath, 'LauncherFiles'));
-
-                    mainWindow?.webContents.send('transfer:complete', { 
-                        success: true, 
-                        type: 'launcher_manual',
-                        message: `Update downloaded to 'LauncherUpdate_new'. Please close the launcher and copy the files over manually.`
-                    });
-                    return { success: true };
+                const oldPath = LAUNCHER_FILES_PATH;
+                const newPath = LAUNCHER_FILES_PATH + tempSuffix;
+                if (fs.existsSync(oldPath)) {
+                    await fs.promises.rm(oldPath, { recursive: true, force: true });
                 }
-
-                // Windows-specific self-update script
-                const updateScriptPath = path.join(app.getPath('temp'), '7d2d-launcher-update.bat');
-                const safeCwd = CWD.replace(/"/g, '""');
-                const scriptContent = `
-@echo off
-title 7D2D Launcher Updater
-echo.
-echo  Please wait, updating the launcher...
-echo  This window will close automatically.
-echo.
-
-REM Wait for the main process to exit. Ping is a reliable delay.
-ping 127.0.0.1 -n 4 > nul
-
-set "OLD_EXE_PATH=${path.join(safeCwd, '7d2dLauncher.exe')}"
-set "NEW_EXE_PATH=${path.join(safeCwd, '7d2dLauncher.exe' + tempSuffix)}"
-set "OLD_FILES_DIR=${path.join(safeCwd, 'LauncherFiles')}"
-set "NEW_FILES_DIR=${path.join(safeCwd, 'LauncherFiles' + tempSuffix)}"
-
-:retry_move
-REM Try to move the new exe over the old one. This may fail if the file is locked.
-move /Y "%NEW_EXE_PATH%" "%OLD_EXE_PATH%"
-REM Check if the move was successful by seeing if the source file still exists.
-if exist "%NEW_EXE_PATH%" (
-    echo  Launcher executable is still in use, retrying in 2 seconds...
-    ping 127.0.0.1 -n 3 > nul
-    goto retry_move
-)
-
-echo  Executable updated successfully.
-
-echo  Updating launcher assets...
-rmdir /s /q "%OLD_FILES_DIR%"
-move "%NEW_FILES_DIR%" "%OLD_FILES_DIR%"
-
-echo  Update complete. Relaunching launcher...
-start "" "%OLD_EXE_PATH%"
-
-REM Self-destruct the script
-(goto) 2>nul & del "%~f0"
-`;
-                fs.writeFileSync(updateScriptPath, scriptContent);
-                updateInfo = { scriptPath: updateScriptPath };
+                await fs.promises.rename(newPath, oldPath);
             }
 
             mainWindow?.webContents.send('transfer:complete', { success: true, type });
@@ -267,11 +213,11 @@ REM Self-destruct the script
     });
 }
 
+// This function is kept in case a future update type needs it, but it's not used by the current flow.
 function handleRestartForUpdate() {
     ipcMain.handle('transfer:restart-for-update', () => {
         if (updateInfo && updateInfo.scriptPath && process.platform === 'win32') {
             try {
-                // Execute the batch script in a new detached process
                 spawn('cmd.exe', ['/c', `start "" "${updateInfo.scriptPath}"`], { detached: true, stdio: 'ignore' }).unref();
                 app.quit();
             } catch (e) {

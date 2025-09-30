@@ -125,15 +125,11 @@ function setupGlobalEventListeners() {
         if (result.success) {
             completeMessageEl.className = 'backup-result-message success';
             if (result.type === 'launcher') {
-                completeMessageEl.textContent = 'Launcher files downloaded. Restart to apply the update.';
-                document.getElementById('transfer-restart-btn').classList.remove('hidden');
-            } else if (result.type === 'launcher_manual') {
-                completeMessageEl.textContent = result.message || 'Update downloaded. Please apply manually.';
-                document.getElementById('transfer-close-btn').classList.remove('hidden');
+                completeMessageEl.textContent = 'Launcher files updated successfully!';
             } else { // 'full'
                 completeMessageEl.textContent = 'Game download complete! You can now close this window.';
-                document.getElementById('transfer-close-btn').classList.remove('hidden');
             }
+            document.getElementById('transfer-close-btn').classList.remove('hidden');
         } else {
             completeMessageEl.textContent = `Download failed: ${result.error}`;
             completeMessageEl.className = 'backup-result-message error';

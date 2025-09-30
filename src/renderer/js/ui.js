@@ -184,9 +184,10 @@ export function showHostSelectionPrompt(hosts) {
             </label>
             <label for="download-type-launcher">
                 <input type="radio" name="download-type" id="download-type-launcher" value="launcher">
-                Launcher Only (Updates launcher and its files)
+                Launcher Only (Updates launcher files)
             </label>
         </div>
+        <p id="host-selection-error" class="modal-error-message hidden"></p>
     `;
 
     textEl.innerHTML = `<div id="custom-prompt-content">${hostListHtml}${optionsHtml}</div>`;
@@ -202,13 +203,17 @@ export function showHostSelectionPrompt(hosts) {
         };
 
         okBtn.onclick = () => {
+            const errorEl = document.getElementById('host-selection-error');
             const selectedHostId = document.querySelector('input[name="host-selection"]:checked')?.value;
             const selectedType = document.querySelector('input[name="download-type"]:checked')?.value;
+            
             if (selectedHostId && selectedType) {
+                errorEl.classList.add('hidden');
                 const selectedHost = hosts.find(h => h.id === selectedHostId);
                 close({ host: selectedHost, type: selectedType });
             } else {
-                alert('Please select a host and a download type.');
+                errorEl.textContent = 'Please select a host and a download type.';
+                errorEl.classList.remove('hidden');
             }
         };
 

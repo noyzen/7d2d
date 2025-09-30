@@ -281,6 +281,15 @@ input:checked + .slider:before { transform: translateX(22px); }
 #confirmation-text p { margin: 0.5em 0; }
 #confirmation-text p strong { color: var(--error); }
 
+.modal-error-message {
+  color: var(--error);
+  font-size: 0.9rem;
+  margin-top: 10px;
+  margin-bottom: -5px; /* Pulls buttons up slightly */
+  text-align: center;
+  font-weight: bold;
+}
+
 .modal-buttons {
   display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;
 }
