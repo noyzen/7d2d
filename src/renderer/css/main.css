@@ -489,10 +489,15 @@ input:checked + .slider:before { transform: translateX(22px); }
   .music-player-container {
     padding: 10px;
   }
+  .now-playing-info {
+    display: none;
+  }
   #audio-visualizer, #music-playlist {
     display: none;
   }
   .music-player-controls {
+    flex-direction: column;
+    gap: 5px;
     margin-bottom: 0;
   }
   .content-area {

@@ -330,7 +330,7 @@
     font-size: 0.8rem;
 }
 
-.mod-info { overflow: hidden; padding-right: 15px; }
+.mod-info { overflow: hidden; padding-right: 15px; min-width: 0; }
 .mod-info h3 { margin: 0; display: flex; align-items: center; gap: 8px; }
 .mod-version { font-size: 0.8rem; color: var(--fg-med); font-family: var(--font-body); font-weight: normal; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; }
 .mod-author { font-size: 0.9rem; color: var(--primary); margin: 5px 0; }
@@ -646,6 +646,10 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
+  }
+  .mod-desc {
+    white-space: normal;
+    word-break: break-word;
   }
   .mod-actions {
     width: 100%;
