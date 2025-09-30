@@ -124,6 +124,7 @@ function setupGlobalEventListeners() {
     });
 
     window.transfer.onComplete((result) => {
+        // This now correctly handles cancellation by closing the modal.
         if (result.error === 'Download cancelled by user.') {
             document.getElementById('transfer-progress-overlay').classList.add('hidden');
             if (settings.playMusic && bgm.paused) {
@@ -146,12 +147,23 @@ function setupGlobalEventListeners() {
         document.getElementById('transfer-close-btn').classList.remove('hidden');
     });
 
-    document.getElementById('transfer-cancel-btn').addEventListener('click', () => {
-        window.transfer.cancelDownload();
+    // Host-side monitor update listener
+    window.transfer.onActiveDownloadsUpdate((downloaders) => {
+        rendererEvents.emit('transfer:active-downloads-update', downloaders);
+    });
+
+    document.getElementById('transfer-cancel-btn').addEventListener('click', async () => {
+        await window.transfer.cancelDownload();
+        // The onComplete handler will now correctly close the modal.
     });
 
     document.getElementById('transfer-close-btn').addEventListener('click', () => {
         document.getElementById('transfer-progress-overlay').classList.add('hidden');
+        // Reset progress bar for next time
+        document.getElementById('transfer-progress-bar-inner').style.width = '0%';
+        document.getElementById('transfer-progress-percentage').textContent = '0%';
+        document.getElementById('transfer-progress-details').textContent = 'Initializing...';
+        document.getElementById('transfer-progress-speed').textContent = '';
     });
 }
 

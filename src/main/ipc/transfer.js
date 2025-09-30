@@ -134,13 +134,14 @@ function startFileServer() {
                  let body = '';
                 req.on('data', chunk => { body += chunk; });
                 req.on('end', () => {
-                    const { progress } = JSON.parse(body);
-                    if (activeDownloaders.has(ip)) {
-                        const downloader = activeDownloaders.get(ip);
-                        downloader.progress = progress;
-                        downloader.lastSeen = Date.now();
-                        broadcastDownloadersUpdate();
-                    }
+                    try {
+                        const { progress } = JSON.parse(body);
+                        if (activeDownloaders.has(ip)) {
+                            const downloader = activeDownloaders.get(ip);
+                            downloader.progress = progress;
+                            downloader.lastSeen = Date.now();
+                        }
+                    } catch(e) { console.error('Failed to parse progress report:', e); }
                     res.writeHead(200).end();
                 });
             } else {
@@ -150,7 +151,7 @@ function startFileServer() {
         
         server.listen(0, '0.0.0.0', () => {
             fileServer = server;
-            downloadersUpdateInterval = setInterval(broadcastDownloadersUpdate, 5000);
+            downloadersUpdateInterval = setInterval(broadcastDownloadersUpdate, 2000); // More frequent updates
             const port = server.address().port;
             console.log(`File server started on port ${port}`);
             resolve(port);
@@ -260,10 +261,12 @@ function handleDownloadGame() {
                 
                 const progressPercentage = totalSize > 0 ? Math.round((downloadedSize / totalSize) * 100) : 0;
                 // Report progress to host
-                http.request({
+                const progressReq = http.request({
                     hostname: host.address, port: host.sharePort, path: '/report-progress', method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
-                }).end(JSON.stringify({ progress: progressPercentage }));
+                });
+                progressReq.on('error', (e) => console.warn('Non-critical progress report failed:', e.message));
+                progressReq.end(JSON.stringify({ progress: progressPercentage }));
 
                 if (file.type === 'dir') {
                     try {
@@ -281,6 +284,10 @@ function handleDownloadGame() {
                         const req = http.get(fileUrl, res => {
                             currentDownload.request = req;
                             res.on('data', chunk => {
+                                if (currentDownload.isCancelled) {
+                                    req.destroy();
+                                    return;
+                                }
                                 downloadedSize += chunk.length;
                                 const now = Date.now();
                                 if (now - lastProgressTime > 250) { // Throttle updates
@@ -291,14 +298,6 @@ function handleDownloadGame() {
                                         totalSize, downloadedSize, totalFiles: filesToDownload.length, filesDone: i,
                                         currentFile: file.path, speed
                                     });
-                                    // Report progress to host
-                                    const progressPercentage = totalSize > 0 ? Math.round((downloadedSize / totalSize) * 100) : 0;
-                                    const progressReq = http.request({
-                                        hostname: host.address, port: host.sharePort, path: '/report-progress', method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' }
-                                    });
-                                    progressReq.on('error', (e) => console.error('Failed to report progress to host:', e.message));
-                                    progressReq.end(JSON.stringify({ progress: progressPercentage }));
                                 }
                             });
                             res.pipe(fileStream);
@@ -316,11 +315,12 @@ function handleDownloadGame() {
             mainWindow?.webContents.send('transfer:complete', { success: true, type: 'full' });
             return { success: true };
         } catch (e) {
-            const finalError = (e.message === 'cancelled') ? 'cancelled'
+            const isUserCancel = currentDownload.isCancelled;
+            const finalError = isUserCancel ? 'cancelled'
                              : (e.message === 'requires-admin' || e.code === 'EPERM' || e.code === 'EBUSY') ? 'requires-admin'
                              : e.message;
 
-            const completeMessage = (finalError === 'cancelled') ? 'Download cancelled by user.' : finalError;
+            const completeMessage = isUserCancel ? 'Download cancelled by user.' : finalError;
             mainWindow?.webContents.send('transfer:complete', { success: false, error: completeMessage });
             return { success: false, error: finalError };
         } finally {
