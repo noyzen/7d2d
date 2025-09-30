@@ -135,6 +135,92 @@ body.maximized #titlebar { border-bottom: none; }
   display: none; animation: bounceIn 0.3s ease; z-index: 1;
 }
 
+/* --- COMPONENTS: MUSIC PLAYER --- */
+.music-player-container {
+  margin-top: auto;
+  padding: 15px;
+  border-top: 1px solid var(--border-glass);
+}
+.now-playing-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 5px 10px 5px;
+  color: var(--fg-med);
+}
+#now-playing-title {
+  font-size: 0.9rem;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#audio-visualizer {
+  width: 100%;
+  height: 50px;
+  background-color: rgba(0,0,0,0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+.music-player-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 10px;
+}
+.music-player-controls button {
+  background: transparent;
+  border: none;
+  color: var(--fg-med);
+  font-size: 1.1rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.music-player-controls button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--fg-light);
+}
+.music-player-controls button#music-play-pause-btn {
+  font-size: 1.5rem;
+  color: var(--fg-light);
+}
+.music-player-controls button#music-play-pause-btn:hover {
+  color: var(--primary);
+  background-color: rgba(0, 255, 127, 0.15);
+}
+.music-playlist {
+  max-height: 120px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.playlist-item {
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  color: var(--fg-med);
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all 0.2s ease;
+}
+.playlist-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--fg-light);
+}
+.playlist-item.active {
+  background-color: rgba(0, 255, 127, 0.15);
+  color: var(--primary);
+  font-weight: bold;
+}
+
+
 /* --- COMPONENTS: GENERAL --- */
 .page { display: flex; flex-direction: column; gap: 20px; animation: fadeIn 0.5s ease-out; }
 @keyframes fadeIn {

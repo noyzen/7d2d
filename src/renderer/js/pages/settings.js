@@ -1,5 +1,6 @@
 import { settings, saveSettings } from '../state.js';
 import { formatBytes, showOperationResult } from '../ui.js';
+import { rendererEvents } from '../events.js';
 
 let isBackupOperationInProgress = false;
 
@@ -56,8 +57,7 @@ function setupEventListeners() {
     document.getElementById('setting-music-toggle').addEventListener('change', (e) => {
         settings.playMusic = e.target.checked;
         saveSettings();
-        const bgm = document.getElementById('bgm');
-        settings.playMusic ? bgm.play() : bgm.pause();
+        rendererEvents.emit('music:set-play-state', settings.playMusic);
     });
 
     document.getElementById('setting-exit-toggle').addEventListener('change', (e) => {

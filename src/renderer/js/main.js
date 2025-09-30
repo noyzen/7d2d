@@ -2,6 +2,7 @@ import { settings, applyInitialSettings, initDefaultSettings } from './state.js'
 import { rendererEvents } from './events.js';
 import { incrementUnreadMessages } from './notifications.js';
 import { formatBytes } from './ui.js';
+import { init as initMusicPlayer } from './music-player.js';
 
 // --- DOM ELEMENTS ---
 const minBtn = document.getElementById('min-btn');
@@ -188,14 +189,13 @@ async function init() {
     document.body.classList.add('no-background-image');
   }
   
-  if (data.bgmPath) {
-    bgm.src = data.bgmPath;
-  } else {
-    bgm.removeAttribute('src');
-  }
-  
   applyInitialSettings(data.settings);
   initDefaultSettings(); // Ensure defaults are set for new features
+
+  // Initialize the new music player if songs are found
+  if (data.bgmPaths && data.bgmPaths.length > 0) {
+      initMusicPlayer(data.bgmPaths);
+  }
 
   // Start LAN discovery
   if (!lanChatStarted) {

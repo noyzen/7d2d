@@ -74,12 +74,6 @@ export function applyInitialSettings(loadedSettings) {
     if (loadedSettings) {
         settings = { ...settings, ...loadedSettings };
     }
-    const bgm = document.getElementById('bgm');
-    if (settings.playMusic && bgm.hasAttribute('src')) {
-      bgm.play().catch(e => console.error("Audio playback failed:", e));
-    } else {
-      bgm.pause();
-    }
 }
 
 // Ensures that settings from older versions of the launcher are compatible

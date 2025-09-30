@@ -52,6 +52,22 @@
           <span>Developer</span>
         </button>
       </nav>
+
+      <div id="music-player-container" class="music-player-container hidden">
+        <div class="now-playing-info">
+          <i class="fa-solid fa-music"></i>
+          <span id="now-playing-title">No Music</span>
+        </div>
+        <canvas id="audio-visualizer"></canvas>
+        <div class="music-player-controls">
+          <button id="music-prev-btn" title="Previous Track"><i class="fa-solid fa-backward-step"></i></button>
+          <button id="music-play-pause-btn" title="Play"><i id="music-play-pause-icon" class="fa-solid fa-play"></i></button>
+          <button id="music-next-btn" title="Next Track"><i class="fa-solid fa-forward-step"></i></button>
+        </div>
+        <div id="music-playlist" class="music-playlist">
+          <!-- Playlist items will be generated here -->
+        </div>
+      </div>
     </aside>
 
     <main class="content-area">

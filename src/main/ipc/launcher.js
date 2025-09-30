@@ -65,7 +65,7 @@ function handleGetInitialData() {
     }
     
     let bgPath = null;
-    let bgmPath = null;
+    let bgmPaths = [];
 
     try {
       if (fs.existsSync(LAUNCHER_FILES_PATH)) {
@@ -85,8 +85,7 @@ function handleGetInitialData() {
           ['.mp3', '.wav'].includes(path.extname(f).toLowerCase())
         );
         if (bgmFiles.length > 0) {
-          const randomBgm = bgmFiles[Math.floor(Math.random() * bgmFiles.length)];
-          bgmPath = path.join(LAUNCHER_FILES_PATH, randomBgm);
+            bgmPaths = bgmFiles.map(f => path.join(LAUNCHER_FILES_PATH, f));
         }
       }
     } catch (e) {
@@ -108,7 +107,7 @@ function handleGetInitialData() {
     return {
       success: true,
       bgPath: bgPath ? `file:///${bgPath.replace(/\\/g, '/')}` : null,
-      bgmPath: bgmPath ? `file:///${bgmPath.replace(/\\/g, '/')}` : null,
+      bgmPaths: bgmPaths.map(p => `file:///${p.replace(/\\/g, '/')}`),
       settings,
       isElevated
     };
