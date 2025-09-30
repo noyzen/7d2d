@@ -2,28 +2,23 @@ import { rendererEvents } from '../events.js';
 import { settings, saveSettings } from '../state.js';
 import { showPrompt } from '../ui.js';
 
-let enabledMods = [];
-let disabledMods = [];
-let activeTab = 'enabled';
+let allMods = [];
 let searchQuery = '';
 let isLoading = false;
 let selectedModSetName = null; // null means "Manual Configuration"
 
 function getEl(id) { return document.getElementById(id); }
 
-function createModElement(mod, isEnabled) {
+function createModElement(mod) {
   const modEl = document.createElement('div');
   modEl.className = 'mod-card';
   if (!mod.isValid) modEl.classList.add('invalid');
+  modEl.classList.toggle('enabled', mod.isEnabled);
 
   const selectedSet = settings.modSets.find(s => s.name === selectedModSetName);
   if (selectedSet && selectedSet.mods.includes(mod.folderName)) {
       modEl.classList.add('in-set');
   }
-
-  const actionButtonHtml = isEnabled
-    ? `<button class="mod-action-btn disable-btn" title="Disable Mod"><i class="fa-solid fa-circle-minus"></i><span>Disable</span></button>`
-    : `<button class="mod-action-btn enable-btn" title="Enable Mod"><i class="fa-solid fa-circle-plus"></i><span>Enable</span></button>`;
 
   modEl.innerHTML = `
     <div class="mod-info" title="${mod.description}">
@@ -35,16 +30,24 @@ function createModElement(mod, isEnabled) {
       <p class="mod-author">by ${mod.author}</p>
       <p class="mod-desc">${mod.description}</p>
     </div>
-    <div class="mod-actions">
-      ${actionButtonHtml}
-    </div>
   `;
 
-  modEl.querySelector('.mod-action-btn').addEventListener('click', async () => {
-    await window.mods.toggle({ folderName: mod.folderName, enable: !isEnabled });
+  modEl.addEventListener('click', async () => {
+    // Prevent rapid re-clicks while processing
+    if (modEl.classList.contains('processing')) return;
+    modEl.classList.add('processing');
+
+    await window.mods.toggle({ folderName: mod.folderName, enable: !mod.isEnabled });
+    
+    // If a mod set was selected, toggling any mod reverts to manual configuration.
+    if (selectedModSetName !== null) {
+        selectedModSetName = null;
+    }
+
     rendererEvents.emit('mods:changed');
-    loadMods();
+    loadMods(); // This reloads and re-renders everything.
   });
+
   return modEl;
 }
 
@@ -115,7 +118,7 @@ function isSetApplied() {
     const selectedSet = settings.modSets.find(s => s.name === selectedModSetName);
     if (!selectedSet) return false;
 
-    const enabledFolders = new Set(enabledMods.map(m => m.folderName));
+    const enabledFolders = new Set(allMods.filter(m => m.isEnabled).map(m => m.folderName));
     const setFolders = new Set(selectedSet.mods);
     
     if (enabledFolders.size !== setFolders.size) return false;
@@ -135,7 +138,7 @@ function renderModSetActions() {
             <button id="disable-all-btn" class="mod-set-action-btn disable-all"><i class="fa-solid fa-power-off"></i> Disable All</button>
         `;
         getEl('enable-all-btn').addEventListener('click', () => applyModList(
-            [...enabledMods, ...disabledMods].map(m => m.folderName),
+            allMods.map(m => m.folderName),
             'Enable all mods? This will overwrite your current configuration.'
         ));
         getEl('disable-all-btn').addEventListener('click', () => applyModList(
@@ -157,36 +160,28 @@ function renderModSetActions() {
     }
 }
 
-function updateTabCounts() {
-    const enabledCountEl = getEl('enabled-mods-count');
-    const disabledCountEl = getEl('disabled-mods-count');
-    if (enabledCountEl) enabledCountEl.textContent = enabledMods.length;
-    if (disabledCountEl) disabledCountEl.textContent = disabledMods.length;
-}
-
 function renderModLists() {
     const listEl = getEl('mod-list');
     if (!listEl) return;
     
     listEl.innerHTML = '';
     
-    const sourceList = activeTab === 'enabled' ? enabledMods : disabledMods;
-    const filteredList = sourceList.filter(mod => {
+    if (isLoading) {
+        listEl.innerHTML = '<div class="loading-spinner"></div>';
+        return;
+    }
+
+    const filteredList = allMods.filter(mod => {
         const query = searchQuery.toLowerCase();
         return mod.name.toLowerCase().includes(query) ||
                mod.author.toLowerCase().includes(query) ||
                mod.description.toLowerCase().includes(query);
     });
 
-    if (isLoading) {
-        listEl.innerHTML = '<div class="loading-spinner"></div>';
-        return;
-    }
-
     if (filteredList.length > 0) {
-        filteredList.forEach(mod => listEl.appendChild(createModElement(mod, activeTab === 'enabled')));
+        filteredList.forEach(mod => listEl.appendChild(createModElement(mod)));
     } else {
-        listEl.innerHTML = `<p class="no-mods">No ${activeTab} mods found.</p>`;
+        listEl.innerHTML = `<p class="no-mods">No mods found.</p>`;
     }
 }
 
@@ -208,33 +203,21 @@ async function loadMods() {
     renderModLists(); // Show spinner
     try {
         const { enabled, disabled } = await window.mods.get();
-        enabledMods = enabled;
-        disabledMods = disabled;
+        const enabledWithState = enabled.map(m => ({ ...m, isEnabled: true }));
+        const disabledWithState = disabled.map(m => ({ ...m, isEnabled: false }));
+        allMods = [...enabledWithState, ...disabledWithState].sort((a, b) => a.name.localeCompare(b.name));
     } catch (error) {
         console.error("Failed to load mods:", error);
-        enabledMods = [];
-        disabledMods = [];
+        allMods = [];
         getEl('mod-list').innerHTML = '<p class="error-message">Could not load mods.</p>';
     }
     isLoading = false;
-    updateTabCounts();
     renderModLists();
+    renderModSets();
     renderModSetActions(); // Update apply button state
 }
 
 function setupEventListeners() {
-    getEl('enabled-tab').addEventListener('click', () => {
-        activeTab = 'enabled';
-        getEl('enabled-tab').classList.add('active');
-        getEl('disabled-tab').classList.remove('active');
-        renderModLists();
-    });
-    getEl('disabled-tab').addEventListener('click', () => {
-        activeTab = 'disabled';
-        getEl('disabled-tab').classList.add('active');
-        getEl('enabled-tab').classList.remove('active');
-        renderModLists();
-    });
     getEl('mod-search-input').addEventListener('input', (e) => {
         searchQuery = e.target.value;
         renderModLists();
@@ -258,7 +241,7 @@ function setupEventListeners() {
         
         const newSet = {
             name: setName,
-            mods: enabledMods.map(m => m.folderName)
+            mods: allMods.filter(m => m.isEnabled).map(m => m.folderName)
         };
         settings.modSets.push(newSet);
         settings.modSets.sort((a, b) => a.name.localeCompare(b.name));
