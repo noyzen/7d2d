@@ -169,12 +169,22 @@ async function applyRegistryEdits(playerName, registryEditorRules) {
     for (const rule of registryEditorRules) {
         if (!rule.regPath || !rule.keyName || !rule.keyValueTemplate) continue;
         const newValue = rule.keyValueTemplate.replace(/##7d2dlauncher-username##/g, playerName);
+
+        // Using exec to ensure the command is run within a shell, which can resolve certain environment/permission subtleties.
+        // It's also more explicit about quoting arguments, which is what the 'reg' command-line tool expects.
+        const command = `reg add "${rule.regPath}" /v "${rule.keyName}" /d "${newValue}" /f`;
+
         await new Promise((resolve, reject) => {
-            const regProcess = spawn('reg', ['add', rule.regPath, '/v', rule.keyName, '/d', newValue, '/f']);
-            let stderr = '';
-            regProcess.stderr.on('data', (data) => { stderr += data; });
-            regProcess.on('close', (code) => code === 0 ? resolve() : reject(new Error(`reg command failed with code ${code}: ${stderr}`)));
-            regProcess.on('error', (err) => reject(err));
+            exec(command, (error, stdout, stderr) => {
+                if (error) {
+                    return reject(new Error(`Registry update failed. Error: ${error.message}. Stderr: ${stderr}`));
+                }
+                // The 'reg' command can sometimes write warnings to stderr. Check for common error strings.
+                if (stderr && (stderr.toLowerCase().includes('error:') || stderr.toLowerCase().includes('access is denied'))) {
+                    return reject(new Error(`Registry update failed with stderr: ${stderr}`));
+                }
+                resolve(stdout);
+            });
         });
     }
 }
