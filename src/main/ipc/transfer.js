@@ -21,6 +21,7 @@ async function listFilesRecursive(dir) {
             const entries = await fs.promises.readdir(currentDir, { withFileTypes: true });
             for (const entry of entries) {
                 const fullPath = path.join(currentDir, entry.name);
+                // Explicitly skip the running executable file on the host.
                 if (fullPath.toLowerCase() === exePath.toLowerCase()) continue;
 
                 const relativePath = path.relative(CWD, fullPath);
@@ -149,12 +150,16 @@ function handleDownloadGame() {
             // 2. Clear target directory if needed
             if (type === 'full') {
                 const entries = await fs.promises.readdir(CWD);
-                const exePath = app.getPath('exe');
+                // Get just the filename of the running executable, e.g., "7d2dLauncher.exe"
+                const exeName = path.basename(app.getPath('exe'));
+
                 for (const entry of entries) {
-                    const fullPath = path.join(CWD, entry);
-                    if (fullPath.toLowerCase() !== exePath.toLowerCase()) {
-                        await fs.promises.rm(fullPath, { recursive: true, force: true });
+                    // Compare entry names directly, case-insensitively. This is the fix.
+                    if (entry.toLowerCase() === exeName.toLowerCase()) {
+                        continue; // Skip deleting the running launcher executable
                     }
+                    const fullPath = path.join(CWD, entry);
+                    await fs.promises.rm(fullPath, { recursive: true, force: true });
                 }
             }
 
