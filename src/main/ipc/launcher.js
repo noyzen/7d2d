@@ -1,7 +1,7 @@
 const { ipcMain, app, dialog } = require('electron');
 const fs = require('fs');
 const path = require('path');
-const { spawn, exec } = require('child_process');
+const { spawn, exec, execSync } = require('child_process');
 const {
   LAUNCHER_FILES_PATH,
   SETTINGS_PATH,
@@ -72,7 +72,19 @@ function handleGetInitialData() {
       console.error("Failed to load settings:", e);
     }
     
-    const isElevated = process.platform === 'win32' ? process.env.SESSIONNAME?.toLowerCase().includes('rdp-tcp') || process.getuid() === 0 : process.getuid() === 0;
+    let isElevated;
+    if (process.platform === 'win32') {
+      try {
+        // Attempt to run a command that requires administrative privileges.
+        // `fsutil dirty query` on the system drive is a good choice as it's non-destructive and fast.
+        execSync(`fsutil dirty query ${process.env.systemdrive || 'C:'}`, { stdio: 'ignore' });
+        isElevated = true;
+      } catch (e) {
+        isElevated = false;
+      }
+    } else {
+      isElevated = (process.getuid() === 0);
+    }
 
     return {
       success: true,
