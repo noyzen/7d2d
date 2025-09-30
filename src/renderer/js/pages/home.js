@@ -113,11 +113,6 @@ function setupEventListeners() {
         }
     });
 
-    // Listen for custom event from chat.js
-    document.addEventListener('lanupdate', (e) => {
-        renderHomePageLanStatus(e.detail);
-    });
-
     window.lan.onPeerUpdate((data) => {
         selfId = data.selfId;
         renderHomePageLanStatus(data.list);

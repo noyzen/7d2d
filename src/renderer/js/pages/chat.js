@@ -83,17 +83,11 @@ function setupEventListeners() {
     window.lan.onPeerUpdate((data) => {
         selfId = data.selfId;
         renderPlayerList(data.list);
-        // Also update home page if it's rendered, this is a bit of a hack
-        const homePlayerList = document.getElementById('home-player-list');
-        if (homePlayerList) {
-            const event = new CustomEvent('lanupdate', { detail: data.list });
-            document.dispatchEvent(event);
-        }
     });
 
     window.lan.onMessageReceived((message) => {
         appendChatMessage(message);
-        if (message.id !== selfId && !get.chatPage().classList.contains('active')) {
+        if (message.id !== selfId && !document.querySelector('.nav-button[data-page="chat"]').classList.contains('active')) {
             unreadMessageCount++;
             updateUnreadBadge();
         }
@@ -105,9 +99,6 @@ export function init() {
     unreadMessageCount = 0;
     updateUnreadBadge();
     setupEventListeners();
-    
-    // Request an immediate peer update to populate the list
-    window.lan.setUsername(''); // This triggers a heartbeat and peer update
 
     const chatMessagesEl = get.chatMessages();
     if(chatMessagesEl) chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
