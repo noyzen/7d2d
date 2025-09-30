@@ -154,10 +154,17 @@
 
 
 /* --- PAGE: MODS --- */
+#page-mods {
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Make page fill the content area to constrain children */
+}
+
 .mods-layout {
     display: flex;
     gap: 25px;
-    height: calc(100vh - 130px); /* Adjust based on header height */
+    flex-grow: 1;
+    min-height: 0; /* Prevents flexbox overflow issues */
 }
 
 .mod-sets-panel {
@@ -200,8 +207,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding-right: 10px;
-    margin-right: -10px;
+    padding-right: 5px; /* Give scrollbar some space */
 }
 
 .mod-set-card {
@@ -295,7 +301,14 @@
 }
 #mod-search-input:focus { outline: none; border-color: var(--primary); }
 
-.mod-list { display: grid; grid-template-columns: 1fr; gap: 10px; overflow-y: auto; flex-grow: 1; padding-right: 10px; margin-right: -10px; }
+.mod-list { 
+    display: grid; 
+    grid-template-columns: 1fr; 
+    gap: 10px; 
+    overflow-y: auto; 
+    flex-grow: 1; 
+    padding-right: 5px; /* Give scrollbar some space */
+}
 .mod-card { 
     display: flex; justify-content: space-between; align-items: center;
     padding: 15px 20px;
