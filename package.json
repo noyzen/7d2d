@@ -1,0 +1,55 @@
+{
+  "name": "7d2d-launcher",
+  "version": "1.0.0",
+  "description": "A feature-rich game launcher for 7 Days to Die.",
+  "main": "src/main/main.js",
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "electron:dev": "electron .",
+    "electron:build": "electron-builder",
+    "electorn:build": "npm run electron:build"
+  },
+  "build": {
+    "appId": "com.noyzen.7d2dlauncher",
+    "productName": "7D2D Launcher",
+    "files": [
+      "src/**/*",
+      "fonts/**/*",
+      "appicon.png",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build"
+    },
+    "asar": true,
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Game",
+      "icon": "appicon.png"
+    },
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ],
+      "icon": "appicon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": false
+    }
+  },
+  "devDependencies": {
+    "electron": "^31.3.0",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "electron-window-state": "^5.0.3",
+    "fast-xml-parser": "^4.3.6"
+  }
+}

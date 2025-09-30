@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; style-src 'self' 'unsafe-inline'; img-src 'self' data: file:; font-src 'self' data:; script-src 'self'; media-src 'self' file:;" />
+  <title>7D2D Launcher</title>
+  <link rel="stylesheet" href="../../fonts/all.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="window-border"></div>
+
+  <div id="titlebar">
+    <div class="drag-region">
+      <div class="window-title" id="window-title">7D2D Launcher</div>
+    </div>
+    <div class="window-controls">
+      <button id="min-btn" title="Minimize" aria-label="Minimize"><i class="fa-solid fa-window-minimize"></i></button>
+      <button id="max-btn" title="Maximize" aria-label="Maximize"><i id="max-icon" class="fa-regular fa-window-maximize"></i></button>
+      <button id="close-btn" title="Close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  </div>
+
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-logo">7D2D</div>
+      <nav class="sidebar-nav">
+        <button class="nav-button active" data-page="page-home" aria-label="Home">
+          <i class="fa-solid fa-house-chimney"></i>
+          <span>Home</span>
+        </button>
+        <button class="nav-button" data-page="page-mods" aria-label="Mods">
+          <i class="fa-solid fa-puzzle-piece"></i>
+          <span>Mods</span>
+        </button>
+        <button class="nav-button" data-page="page-settings" aria-label="Settings">
+          <i class="fa-solid fa-gear"></i>
+          <span>Settings</span>
+        </button>
+      </nav>
+    </aside>
+
+    <main class="content-area">
+      <!-- Home Page -->
+      <div class="page active" id="page-home">
+        <div class="home-content">
+          <h1>Welcome Back, Survivor</h1>
+          <p>Your wasteland adventure awaits. Manage your mods, tweak settings, and dive back into the apocalypse.</p>
+          <button id="start-game-btn" class="start-button">
+            <i class="fa-solid fa-play"></i>
+            <span>START GAME</span>
+          </button>
+          <div id="start-game-error" class="error-message"></div>
+        </div>
+      </div>
+
+      <!-- Mods Page -->
+      <div class="page" id="page-mods">
+        <div class="page-header">
+          <h1>Mod Manager</h1>
+          <p>Enable or disable mods by toggling the switch.</p>
+        </div>
+        <div class="mod-lists">
+          <div class="mod-list-container">
+            <h2><i class="fa-solid fa-check-circle"></i> Enabled Mods</h2>
+            <div id="enabled-mods-list" class="mod-list"></div>
+          </div>
+          <div class="mod-list-container">
+            <h2><i class="fa-solid fa-times-circle"></i> Disabled Mods</h2>
+            <div id="disabled-mods-list" class="mod-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Page -->
+      <div class="page" id="page-settings">
+        <div class="page-header">
+          <h1>Settings</h1>
+          <p>Configure your launcher experience.</p>
+        </div>
+        <div class="settings-container">
+          <div class="setting-item">
+            <div class="setting-label">
+              <h3>Background Music</h3>
+              <p>Play music when the launcher starts.</p>
+            </div>
+            <div class="setting-control">
+              <label class="switch">
+                <input type="checkbox" id="setting-music-toggle">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="error-overlay">
+    <div class="error-card">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <h2>Launcher Setup Error</h2>
+      <p id="error-message"></p>
+    </div>
+  </div>
+
+  <audio id="bgm" loop></audio>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

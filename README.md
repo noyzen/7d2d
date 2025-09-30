@@ -1,11 +1,19 @@
-<div align="center">
+# 7 Days to Die Launcher
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+A feature-rich, cross-platform game launcher for 7 Days to Die, built with Electron.
 
-  <h1>Built with AI Studio</h2>
+This launcher provides a custom user interface for managing mods, settings, and launching the game.
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## Scripts
+- `npm run electron:dev` — Run the app in development mode.
+- `npm run electron:build` — Build the application for production (AppImage for Linux, Portable/NSIS for Windows).
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## Setup
+```bash
+npm install
+```
 
-</div>
+## Run
+```bash
+npm run electron:dev
+```
