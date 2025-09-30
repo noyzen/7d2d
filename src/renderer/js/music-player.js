@@ -29,6 +29,8 @@ function cleanTrackName(uri) {
 }
 
 function updateUI() {
+    dom.playerContainer.classList.toggle('playing', isPlaying);
+
     // Update play/pause button
     dom.playPauseIcon.classList.toggle('fa-play', !isPlaying);
     dom.playPauseIcon.classList.toggle('fa-pause', isPlaying);
@@ -93,9 +95,16 @@ function renderPlaylist() {
     playlist.forEach((track, index) => {
         const item = document.createElement('div');
         item.className = 'playlist-item';
-        item.textContent = cleanTrackName(track);
-        item.title = cleanTrackName(track);
         item.dataset.index = index;
+        item.innerHTML = `
+            <span class="playlist-item-icon">
+                <i class="fa-solid fa-music"></i>
+                <i class="fa-solid fa-volume-high"></i>
+                <i class="fa-solid fa-pause"></i>
+            </span>
+            <span class="playlist-item-name">${cleanTrackName(track)}</span>
+        `;
+        item.title = cleanTrackName(track);
         item.addEventListener('click', () => playTrack(index));
         dom.playlistContainer.appendChild(item);
     });
