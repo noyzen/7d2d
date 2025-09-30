@@ -19,6 +19,7 @@ let selfId = null;
 let unreadMessageCount = 0;
 let logoClickCount = 0;
 let logoClickTimer = null;
+let isBackupOperationInProgress = false;
 
 // --- LAUNCH PARAMETERS CONFIG ---
 const LAUNCH_PARAMETERS_CONFIG = {
@@ -105,6 +106,19 @@ const disabledModsList = document.getElementById('disabled-mods-list');
 // Settings Page
 const musicToggle = document.getElementById('setting-music-toggle');
 const exitOnLaunchToggle = document.getElementById('setting-exit-toggle');
+
+// Backup/Restore Elements
+const backupStatusContainer = document.getElementById('backup-status-container');
+const backupControls = document.getElementById('backup-controls');
+const backupBtn = document.getElementById('backup-btn');
+const restoreBtn = document.getElementById('restore-btn');
+const backupProgressContainer = document.getElementById('backup-progress-container');
+const progressLabel = document.getElementById('progress-label');
+const progressPercentage = document.getElementById('progress-percentage');
+const progressBarInner = document.getElementById('progress-bar-inner');
+const progressDetails = document.getElementById('progress-details');
+const backupResultMessage = document.getElementById('backup-result-message');
+
 
 // Developer Page
 const configRulesList = document.getElementById('config-rules-list');
@@ -195,6 +209,8 @@ navButtons.forEach(button => {
       updateUnreadBadge();
       // Scroll to the latest message
       chatMessages.scrollTop = chatMessages.scrollHeight;
+    } else if (pageId === 'page-settings') {
+      renderBackupStatus();
     }
   });
 });
@@ -388,6 +404,117 @@ function renderAboutPage() {
     aboutWebsite.textContent = aboutData.website;
     aboutWebsite.href = aboutData.website;
 }
+
+// --- Backup & Restore ---
+function formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+async function renderBackupStatus() {
+    const status = await window.backup.getStatus();
+    if (!status.success) {
+        backupStatusContainer.innerHTML = `<p class="error-message">Could not get backup status: ${status.error}</p>`;
+        return;
+    }
+
+    const { source, backup, freeSpace } = status;
+    const sourceDate = source.mtime ? new Date(source.mtime).toLocaleString() : 'N/A';
+    const backupDate = backup.mtime ? new Date(backup.mtime).toLocaleString() : 'N/A';
+
+    backupStatusContainer.innerHTML = `
+        <div class="backup-info-grid">
+            <div class="backup-info-item">
+                <span>Current Data Size</span>
+                <p>${formatBytes(source.totalSize)}</p>
+            </div>
+            <div class="backup-info-item">
+                <span>Last Backup Size</span>
+                <p>${formatBytes(backup.totalSize)}</p>
+            </div>
+            <div class="backup-info-item">
+                <span>Last Backup Date</span>
+                <p>${backupDate}</p>
+            </div>
+             <div class="backup-info-item">
+                <span>Available Space</span>
+                <p>${formatBytes(freeSpace)}</p>
+            </div>
+        </div>
+    `;
+
+    restoreBtn.disabled = backup.totalSize === 0;
+    backupBtn.disabled = source.totalSize === 0;
+}
+
+function showOperationResult(message, isError = false) {
+    backupResultMessage.textContent = message;
+    backupResultMessage.className = `backup-result-message ${isError ? 'error' : 'success'}`;
+    setTimeout(() => {
+        backupResultMessage.className = 'backup-result-message';
+    }, 5000);
+}
+
+backupBtn.addEventListener('click', async () => {
+    if (isBackupOperationInProgress) return;
+    if (confirm('This will overwrite any existing backup. Are you sure you want to continue?')) {
+        isBackupOperationInProgress = true;
+        backupControls.classList.add('hidden');
+        backupProgressContainer.classList.remove('hidden');
+        progressLabel.textContent = 'Backing up...';
+        showOperationResult('');
+
+        const result = await window.backup.startBackup();
+        
+        isBackupOperationInProgress = false;
+        backupControls.classList.remove('hidden');
+        backupProgressContainer.classList.add('hidden');
+
+        if (result.success) {
+            showOperationResult('Backup completed successfully!', false);
+        } else {
+            showOperationResult(`Backup failed: ${result.error}`, true);
+        }
+        renderBackupStatus();
+    }
+});
+
+restoreBtn.addEventListener('click', async () => {
+    if (isBackupOperationInProgress) return;
+    if (confirm('DANGER: This will delete your current game data and replace it with the backup. This cannot be undone. Are you sure?')) {
+        isBackupOperationInProgress = true;
+        backupControls.classList.add('hidden');
+        backupProgressContainer.classList.remove('hidden');
+        progressLabel.textContent = 'Restoring...';
+        showOperationResult('');
+        
+        const result = await window.backup.startRestore();
+
+        isBackupOperationInProgress = false;
+        backupControls.classList.remove('hidden');
+        backupProgressContainer.classList.add('hidden');
+
+        if (result.success) {
+            showOperationResult('Restore completed successfully!', false);
+        } else {
+            showOperationResult(`Restore failed: ${result.error}`, true);
+        }
+        renderBackupStatus();
+    }
+});
+
+window.backup.onProgress((progress) => {
+    const { totalSize, copiedSize, fileCount, filesCopied, currentFile } = progress;
+    const percent = totalSize > 0 ? Math.round((copiedSize / totalSize) * 100) : 0;
+    
+    progressBarInner.style.width = `${percent}%`;
+    progressPercentage.textContent = `${percent}%`;
+    progressDetails.textContent = `(${filesCopied}/${fileCount}) Copying: ${currentFile}`;
+});
 
 // --- LAN CHAT ---
 function updateUnreadBadge() {
@@ -847,6 +974,7 @@ async function init() {
   renderAboutPage();
   updatePlayerNameVisibility();
   updateHomePageStats();
+  renderBackupStatus();
   
   // Start LAN discovery at launch for immediate feedback
   if (!lanChatStarted) {

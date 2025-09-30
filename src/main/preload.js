@@ -31,3 +31,11 @@ contextBridge.exposeInMainWorld('lan', {
   onPeerUpdate: (callback) => ipcRenderer.on('lan:peer-update', (_e, peers) => callback(peers)),
   onMessageReceived: (callback) => ipcRenderer.on('lan:message-received', (_e, message) => callback(message)),
 });
+
+contextBridge.exposeInMainWorld('backup', {
+  getStatus: () => ipcRenderer.invoke('backup:get-status'),
+  startBackup: () => ipcRenderer.invoke('backup:start-backup'),
+  startRestore: () => ipcRenderer.invoke('backup:start-restore'),
+  onProgress: (callback) => ipcRenderer.on('backup:progress', (_e, progress) => callback(progress)),
+  onComplete: (callback) => ipcRenderer.on('backup:complete', (_e, result) => callback(result))
+});

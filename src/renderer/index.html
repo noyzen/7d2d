@@ -166,6 +166,41 @@
               </label>
             </div>
           </div>
+
+          <div class="page-section-divider"></div>
+            <div class="data-management-container">
+              <div class="setting-label" style="margin-bottom: 20px;">
+                  <h3>Game Data Management</h3>
+                  <p>Backup or restore your game save data (worlds, player profiles).</p>
+              </div>
+
+              <div id="backup-status-container" class="backup-status-container">
+                  <!-- Status info will be injected here by JS -->
+              </div>
+
+              <div id="backup-controls" class="backup-controls">
+                  <button id="backup-btn" class="backup-action-btn">
+                      <i class="fa-solid fa-download"></i> Backup Game Data
+                  </button>
+                  <button id="restore-btn" class="backup-action-btn restore">
+                      <i class="fa-solid fa-upload"></i> Restore Game Data
+                  </button>
+              </div>
+
+              <div id="backup-progress-container" class="backup-progress-container hidden">
+                  <div class="progress-info">
+                      <span id="progress-label">Backing up...</span>
+                      <span id="progress-percentage">0%</span>
+                  </div>
+                  <div class="progress-bar-outer">
+                      <div id="progress-bar-inner" class="progress-bar-inner"></div>
+                  </div>
+                  <div id="progress-details" class="progress-details">
+                      Initializing...
+                  </div>
+              </div>
+              <div id="backup-result-message" class="backup-result-message"></div>
+          </div>
         </div>
       </div>
 
