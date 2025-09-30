@@ -280,7 +280,8 @@ function handleDownloadGame() {
                 } else {
                     await fs.promises.mkdir(path.dirname(localPath), { recursive: true });
                     
-                    const wasCancelledDuringDownload = await new Promise((resolve, reject) => {
+                    // This promise will resolve on success, or reject on any error including cancellation.
+                    await new Promise((resolve, reject) => {
                         if (currentDownload.isCancelled) return reject(new Error('cancelled'));
                         
                         const fileStream = fs.createWriteStream(localPath);
@@ -295,7 +296,7 @@ function handleDownloadGame() {
                             
                             res.on('data', chunk => {
                                 if (currentDownload.isCancelled) {
-                                    req.destroy();
+                                    req.destroy(); // Will trigger 'error' event on req
                                 } else {
                                     downloadedSize += chunk.length;
                                     const now = Date.now();
@@ -318,8 +319,11 @@ function handleDownloadGame() {
                             fileStream.on('finish', () => {
                                 fileStream.close(() => {
                                     currentDownload.request = null;
-                                    // Resolve with cancellation status to handle race conditions
-                                    resolve(currentDownload.isCancelled);
+                                    // CRITICAL: Check cancellation status before resolving
+                                    if (currentDownload.isCancelled) {
+                                        return reject(new Error('cancelled'));
+                                    }
+                                    resolve();
                                 });
                             });
                             
@@ -331,7 +335,7 @@ function handleDownloadGame() {
                             });
                         });
                         
-                        req.on('error', (err) => {
+                        req.on('error', () => {
                             currentDownload.request = null;
                             if (fileStream.writable && !fileStream.closed) {
                                 fileStream.close();
@@ -340,11 +344,6 @@ function handleDownloadGame() {
                             reject(new Error('cancelled'));
                         });
                     });
-
-                    // Explicitly check cancellation status after each file promise resolves
-                    if (wasCancelledDuringDownload || currentDownload.isCancelled) {
-                        throw new Error('cancelled');
-                    }
                 }
             }
             
