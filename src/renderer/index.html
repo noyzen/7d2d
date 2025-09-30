@@ -43,6 +43,10 @@
           <i class="fa-solid fa-file-code"></i>
           <span>Developer</span>
         </button>
+        <button class="nav-button" data-page="page-chat" aria-label="Chat">
+          <i class="fa-solid fa-comments"></i>
+          <span>Chat</span>
+        </button>
       </nav>
     </aside>
 
@@ -152,6 +156,32 @@
                   <span>Add New Registry Rule</span>
               </button>
           </div>
+        </div>
+      </div>
+
+      <!-- Chat Page -->
+      <div class="page" id="page-chat">
+        <div class="chat-layout">
+          <aside class="chat-sidebar">
+            <div class="page-header" style="padding: 0; border: none;">
+                <h2>Players on LAN</h2>
+                <p>Users running the launcher.</p>
+            </div>
+            <div id="player-list" class="player-list">
+              <!-- Player items will be inserted here -->
+            </div>
+          </aside>
+          <main class="chat-main">
+            <div id="chat-messages" class="chat-messages">
+              <div class="chat-notice">
+                Welcome to the LAN chat! Messages are not saved and will disappear when you close the launcher.
+              </div>
+            </div>
+            <form id="chat-form" class="chat-form" aria-label="Chat Message Form">
+              <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off" aria-label="Message Input">
+              <button type="submit" id="chat-send-btn" aria-label="Send Message"><i class="fa-solid fa-paper-plane"></i></button>
+            </form>
+          </main>
         </div>
       </div>
     </main>

@@ -6,6 +6,8 @@ let settings = {
   configEditorRules: [],
   registryEditorRules: [],
 };
+let lanChatStarted = false;
+let selfId = null;
 
 // --- DOM ELEMENTS ---
 // Window Controls
@@ -44,6 +46,14 @@ const registryEditorWrapper = document.getElementById('registry-editor-wrapper')
 const registryRulesList = document.getElementById('registry-rules-list');
 const addRegistryRuleBtn = document.getElementById('add-registry-rule-btn');
 
+// Chat Page
+const chatPage = document.getElementById('page-chat');
+const playerList = document.getElementById('player-list');
+const chatMessages = document.getElementById('chat-messages');
+const chatForm = document.getElementById('chat-form');
+const chatInput = document.getElementById('chat-input');
+const chatSendBtn = document.getElementById('chat-send-btn');
+
 
 // --- WINDOW CONTROLS ---
 async function refreshMaxButton() {
@@ -81,6 +91,10 @@ navButtons.forEach(button => {
     } else if (pageId === 'page-developer') {
       renderConfigEditorRules();
       renderRegistryRules();
+    } else if (pageId === 'page-chat' && !lanChatStarted) {
+      window.lan.startDiscovery();
+      window.lan.setUsername(settings.playerName || 'Survivor');
+      lanChatStarted = true;
     }
   });
 });
@@ -248,6 +262,85 @@ async function loadMods() {
       disabledModsList.innerHTML = '<p class="no-mods">No disabled mods found.</p>';
     }
 }
+
+// --- LAN CHAT ---
+
+function renderPlayerList(peers) {
+  playerList.innerHTML = '';
+  if (!peers || peers.length === 0) {
+    playerList.innerHTML = '<p class="no-mods">No other players found.</p>';
+    return;
+  }
+  
+  // Sort: self first, then online alphabetically, then offline alphabetically
+  peers.sort((a, b) => {
+    if (a.id === selfId) return -1;
+    if (b.id === selfId) return 1;
+    if (a.status !== b.status) {
+      return a.status === 'online' ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  peers.forEach(peer => {
+    const playerEl = document.createElement('div');
+    playerEl.className = 'player-item';
+    if (peer.id === selfId) {
+      playerEl.classList.add('is-self');
+    }
+    playerEl.innerHTML = `
+      <div class="status-dot ${peer.status}"></div>
+      <span class="player-name" title="${peer.name}">${peer.name} ${peer.id === selfId ? '(You)' : ''}</span>
+    `;
+    playerList.appendChild(playerEl);
+  });
+}
+
+function appendChatMessage(message) {
+  const isSelf = message.id === selfId;
+  const messageEl = document.createElement('div');
+  messageEl.className = 'chat-message';
+  if (isSelf) {
+    messageEl.classList.add('is-self');
+  }
+
+  const timestamp = new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  messageEl.innerHTML = `
+    <div class="message-header">
+      <span class="message-sender">${message.name}</span>
+      <span class="message-timestamp">${timestamp}</span>
+    </div>
+    <div class="message-bubble">${message.text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+  `;
+
+  const shouldScroll = chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 10;
+
+  chatMessages.appendChild(messageEl);
+
+  if (shouldScroll) {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+}
+
+chatForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const message = chatInput.value.trim();
+  if (message) {
+    window.lan.sendMessage(message);
+    chatInput.value = '';
+  }
+});
+
+window.lan.onPeerUpdate((data) => {
+  selfId = data.selfId;
+  renderPlayerList(data.list);
+});
+
+window.lan.onMessageReceived((message) => {
+  appendChatMessage(message);
+});
+
 
 // Config Editor
 function createConfigRuleElement(rule) {

@@ -22,3 +22,12 @@ contextBridge.exposeInMainWorld('launcher', {
   selectFile: () => ipcRenderer.invoke('launcher:select-file'),
   onGameClosed: (callback) => ipcRenderer.on('game:closed', () => callback()),
 });
+
+contextBridge.exposeInMainWorld('lan', {
+  startDiscovery: () => ipcRenderer.invoke('lan:start-discovery'),
+  stopDiscovery: () => ipcRenderer.invoke('lan:stop-discovery'),
+  sendMessage: (message) => ipcRenderer.invoke('lan:send-message', message),
+  setUsername: (username) => ipcRenderer.invoke('lan:set-username', username),
+  onPeerUpdate: (callback) => ipcRenderer.on('lan:peer-update', (_e, peers) => callback(peers)),
+  onMessageReceived: (callback) => ipcRenderer.on('lan:message-received', (_e, message) => callback(message)),
+});

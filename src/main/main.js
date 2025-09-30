@@ -4,6 +4,8 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 const WindowState = require('electron-window-state');
 const { XMLParser } = require('fast-xml-parser');
+const dgram = require('dgram');
+const crypto = require('crypto');
 
 let CWD;
 if (app.isPackaged) {
@@ -26,6 +28,19 @@ const SETTINGS_PATH = path.join(LAUNCHER_FILES_PATH, 'settings.json');
 const MODS_PATH = path.join(CWD, 'Mods');
 const DISABLED_MODS_PATH = path.join(CWD, 'DisabledMods');
 const GAME_EXE_PATH = path.join(CWD, '7DaysToDie.exe');
+
+// --- LAN CHAT CONSTANTS ---
+const LAN_PORT = 47625; // Random port
+const BROADCAST_ADDR = '255.255.255.255';
+const BROADCAST_INTERVAL = 5000; // 5 seconds
+const PEER_TIMEOUT = 12000; // 12 seconds
+const INSTANCE_ID = crypto.randomUUID();
+
+let lanSocket = null;
+let broadcastInterval = null;
+let peerCheckInterval = null;
+let peers = new Map();
+let currentUsername = 'Survivor';
 
 // Ensure single instance
 const gotTheLock = app.requestSingleInstanceLock();
@@ -107,6 +122,139 @@ ipcMain.handle('window:maximize', () => {
 ipcMain.handle('window:close', () => mainWindow?.close());
 ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
 
+// --- LAN Chat Logic ---
+function updatePeer(id, name, address) {
+  const now = Date.now();
+  if (!peers.has(id)) {
+    console.log(`New peer discovered: ${name} [${id}] at ${address}`);
+  }
+  peers.set(id, { name, lastSeen: now, status: 'online' });
+}
+
+function checkPeers() {
+  const now = Date.now();
+  let changed = false;
+  for (const [id, peer] of peers.entries()) {
+    if (peer.status === 'online' && now - peer.lastSeen > PEER_TIMEOUT) {
+      peer.status = 'offline';
+      changed = true;
+      console.log(`Peer timed out: ${peer.name} [${id}]`);
+    }
+  }
+  if (changed) {
+    sendPeerUpdate();
+  }
+}
+
+function sendPeerUpdate() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const peerList = Array.from(peers, ([id, value]) => ({ id, ...value }));
+    mainWindow.webContents.send('lan:peer-update', {selfId: INSTANCE_ID, list: peerList});
+  }
+}
+
+function broadcastPacket(type, payload) {
+  if (!lanSocket) return;
+  const message = Buffer.from(JSON.stringify({
+    type,
+    id: INSTANCE_ID,
+    name: currentUsername,
+    ...payload
+  }));
+  lanSocket.send(message, 0, message.length, LAN_PORT, BROADCAST_ADDR, (err) => {
+    if (err) console.error('Broadcast error:', err);
+  });
+}
+
+ipcMain.handle('lan:start-discovery', () => {
+  if (lanSocket) {
+    console.log('LAN discovery already active.');
+    return;
+  }
+  
+  lanSocket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+
+  lanSocket.on('error', (err) => {
+    console.error(`LAN socket error:\n${err.stack}`);
+    lanSocket.close();
+    lanSocket = null;
+  });
+
+  lanSocket.on('message', (msg, rinfo) => {
+    try {
+      const data = JSON.parse(msg.toString());
+      if (!data.id || data.id === INSTANCE_ID) return; // Ignore self
+
+      switch (data.type) {
+        case 'heartbeat':
+          updatePeer(data.id, data.name, rinfo.address);
+          sendPeerUpdate();
+          break;
+        case 'message':
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('lan:message-received', {
+              id: data.id,
+              name: data.name,
+              text: data.text,
+              timestamp: Date.now()
+            });
+          }
+          break;
+      }
+    } catch (e) {
+      console.warn(`Received malformed LAN packet from ${rinfo.address}:${rinfo.port}`);
+    }
+  });
+
+  lanSocket.bind(LAN_PORT, () => {
+    lanSocket.setBroadcast(true);
+    console.log('LAN socket bound. Starting discovery...');
+
+    // Start broadcasting our presence
+    broadcastInterval = setInterval(() => broadcastPacket('heartbeat'), BROADCAST_INTERVAL);
+    broadcastPacket('heartbeat'); // Immediate broadcast
+
+    // Start checking for disconnected peers
+    peerCheckInterval = setInterval(checkPeers, BROADCAST_INTERVAL);
+  });
+});
+
+ipcMain.handle('lan:stop-discovery', () => {
+  if (broadcastInterval) clearInterval(broadcastInterval);
+  if (peerCheckInterval) clearInterval(peerCheckInterval);
+  if (lanSocket) {
+    lanSocket.close();
+    lanSocket = null;
+  }
+  peers.clear();
+  broadcastInterval = null;
+  peerCheckInterval = null;
+  console.log('LAN discovery stopped.');
+});
+
+ipcMain.handle('lan:set-username', (_, username) => {
+  currentUsername = username;
+  // Update our own entry for immediate reflection
+  updatePeer(INSTANCE_ID, currentUsername, '127.0.0.1');
+  sendPeerUpdate();
+  broadcastPacket('heartbeat'); // Broadcast name change immediately
+});
+
+ipcMain.handle('lan:send-message', (_, messageText) => {
+  if (messageText && messageText.trim().length > 0) {
+    broadcastPacket('message', { text: messageText.trim() });
+    // Also send it back to our own renderer for display
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('lan:message-received', {
+            id: INSTANCE_ID,
+            name: currentUsername,
+            text: messageText.trim(),
+            timestamp: Date.now()
+        });
+    }
+  }
+});
+
 // --- Launcher API ---
 
 // Initial data check
@@ -125,6 +273,7 @@ ipcMain.handle('launcher:get-initial-data', () => {
   try {
     if (fs.existsSync(SETTINGS_PATH)) {
       settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
+      currentUsername = settings.playerName || 'Survivor';
     }
   } catch (e) {
     console.error("Failed to load settings:", e);
@@ -143,6 +292,13 @@ ipcMain.handle('launcher:get-initial-data', () => {
 ipcMain.handle('launcher:save-settings', async (_, settings) => {
   try {
     fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+    if (settings.playerName && settings.playerName !== currentUsername) {
+      currentUsername = settings.playerName;
+      // Update our own entry for immediate reflection
+      updatePeer(INSTANCE_ID, currentUsername, '127.0.0.1');
+      sendPeerUpdate();
+      broadcastPacket('heartbeat'); // Broadcast name change immediately
+    }
     return { success: true };
   } catch (e) {
     console.error("Failed to save settings:", e);
