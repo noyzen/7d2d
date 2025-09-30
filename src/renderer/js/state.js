@@ -5,6 +5,7 @@ export let settings = {
   exitOnLaunch: true,
   playerName: 'Survivor',
   isSharingGame: false,
+  createDesktopShortcut: true,
   modSets: [],
   configEditorRules: [],
   registryEditorRules: [],
@@ -87,6 +88,10 @@ export function initDefaultSettings() {
     let changed = false;
     if (settings.isSharingGame === undefined) {
         settings.isSharingGame = false;
+        changed = true;
+    }
+    if (settings.createDesktopShortcut === undefined) {
+        settings.createDesktopShortcut = true;
         changed = true;
     }
     if (!settings.configEditorRules) {

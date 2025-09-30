@@ -64,6 +64,11 @@ function setupEventListeners() {
         settings.exitOnLaunch = e.target.checked;
         saveSettings();
     });
+
+    document.getElementById('setting-shortcut-toggle').addEventListener('change', (e) => {
+        settings.createDesktopShortcut = e.target.checked;
+        saveSettings();
+    });
     
     document.getElementById('setting-sharing-toggle').addEventListener('change', (e) => {
         settings.isSharingGame = e.target.checked;
@@ -116,6 +121,7 @@ export function init() {
     // Set initial state of toggles
     document.getElementById('setting-music-toggle').checked = settings.playMusic ?? true;
     document.getElementById('setting-exit-toggle').checked = settings.exitOnLaunch ?? false;
+    document.getElementById('setting-shortcut-toggle').checked = settings.createDesktopShortcut ?? true;
     document.getElementById('setting-sharing-toggle').checked = settings.isSharingGame ?? false;
     
     // Show registry backup section on Windows
