@@ -147,19 +147,33 @@ function handleDownloadGame() {
 
             const tempSuffix = '.7d2d-dl-new';
 
-            // 2. Clear target directory if needed
+            // 2. Clear target directory if needed using a safe-list
             if (type === 'full') {
-                const entries = await fs.promises.readdir(CWD);
-                // Get just the filename of the running executable, e.g., "7d2dLauncher.exe"
-                const exeName = path.basename(app.getPath('exe'));
+                const itemsToDelete = [
+                    // Folders
+                    '#Steam-Manifests', '7DaysToDie_Data', 'BackupData', 'Data',
+                    'DisabledMods', 'EasyAntiCheat', 'Launcher', 'LauncherFiles',
+                    'Licenses', 'Logos', 'Mods', 'MonoBleedingEdge',
+                    // Files
+                    '7DaysToDie.exe', '7DaysToDie_EAC.exe', '7dLauncher.exe',
+                    'installscript.vdf', 'MicrosoftGame.Config', 'nvngx_dlss.dll',
+                    'NVUnityPlugin.dll', 'platform.cfg', 'platform.cfg.legit',
+                    'serverconfig.xml', 'startdedicated.bat', 'steamclient64.dll',
+                    'steam_appid.txt', 'tier0_s64.dll', 'UnityCrashHandler64.exe',
+                    'UnityCrashHandler64.pdb', 'UnityPlayer.dll',
+                    'UnityPlayer_Win64_player_mono_x64.pdb', 'vstdlib_s64.dll',
+                    'WindowsPlayer_player_Master_mono_x64.pdb'
+                ];
 
-                for (const entry of entries) {
-                    // Compare entry names directly, case-insensitively. This is the fix.
-                    if (entry.toLowerCase() === exeName.toLowerCase()) {
-                        continue; // Skip deleting the running launcher executable
+                for (const item of itemsToDelete) {
+                    const fullPath = path.join(CWD, item);
+                    if (fs.existsSync(fullPath)) {
+                        try {
+                            await fs.promises.rm(fullPath, { recursive: true, force: true });
+                        } catch (e) {
+                            console.warn(`Could not delete item during cleanup (might be locked): ${fullPath}`, e.message);
+                        }
                     }
-                    const fullPath = path.join(CWD, entry);
-                    await fs.promises.rm(fullPath, { recursive: true, force: true });
                 }
             }
 
