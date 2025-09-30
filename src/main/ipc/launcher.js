@@ -5,6 +5,7 @@ const { spawn, exec, execSync } = require('child_process');
 const {
   LAUNCHER_FILES_PATH,
   SETTINGS_PATH,
+  MOD_SETS_PATH,
   GAME_EXE_PATH,
   CWD,
 } = require('../constants');
@@ -63,6 +64,22 @@ function handleGetInitialData() {
     } catch (e) {
       console.error("Failed to load settings:", e);
     }
+
+    // Load mod sets separately
+    try {
+      if (fs.existsSync(MOD_SETS_PATH)) {
+        settings.modSets = JSON.parse(fs.readFileSync(MOD_SETS_PATH, 'utf8'));
+      } else if (settings.modSets && Array.isArray(settings.modSets)) {
+        // Migration case: modSets are in the main settings file.
+        // They will be moved to modsets.json on the next save operation.
+        console.log('Migrating modSets from settings.json to modsets.json');
+      } else {
+        settings.modSets = [];
+      }
+    } catch (e) {
+      console.error("Failed to load or migrate mod sets:", e);
+      settings.modSets = [];
+    }
     
     let bgPath = null;
     let bgmPaths = [];
@@ -114,15 +131,24 @@ function handleGetInitialData() {
 }
 
 function handleSaveSettings() {
-  ipcMain.handle('launcher:save-settings', async (_, settings) => {
+  ipcMain.handle('launcher:save-settings', async (_, receivedSettings) => {
     try {
       // Ensure the directory exists before writing.
       if (!fs.existsSync(LAUNCHER_FILES_PATH)) {
         fs.mkdirSync(LAUNCHER_FILES_PATH, { recursive: true });
       }
-      fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
-      if (settings.playerName && settings.playerName !== lanIpc.getCurrentUsername()) {
-        lanIpc.setUsername(settings.playerName);
+
+      // Separate mod sets and save them to their own file.
+      const modSets = receivedSettings.modSets || [];
+      fs.writeFileSync(MOD_SETS_PATH, JSON.stringify(modSets, null, 2));
+
+      // Create a copy of settings without modSets to save to the main file.
+      const settingsToSave = { ...receivedSettings };
+      delete settingsToSave.modSets;
+      fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settingsToSave, null, 2));
+
+      if (receivedSettings.playerName && receivedSettings.playerName !== lanIpc.getCurrentUsername()) {
+        lanIpc.setUsername(receivedSettings.playerName);
       }
       return { success: true };
     } catch (e) {

@@ -17,6 +17,7 @@ if (app.isPackaged) {
 // Paths
 const LAUNCHER_FILES_PATH = path.join(CWD, 'LauncherFiles');
 const SETTINGS_PATH = path.join(LAUNCHER_FILES_PATH, 'settings.json');
+const MOD_SETS_PATH = path.join(LAUNCHER_FILES_PATH, 'modsets.json');
 const MODS_PATH = path.join(CWD, 'Mods');
 const DISABLED_MODS_PATH = path.join(CWD, 'DisabledMods');
 const GAME_EXE_PATH = path.join(CWD, '7DaysToDie.exe');
@@ -38,6 +39,7 @@ module.exports = {
   CWD,
   LAUNCHER_FILES_PATH,
   SETTINGS_PATH,
+  MOD_SETS_PATH,
   MODS_PATH,
   DISABLED_MODS_PATH,
   GAME_EXE_PATH,
