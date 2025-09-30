@@ -1,5 +1,5 @@
 import { settings, saveSettings } from '../state.js';
-import { formatBytes, showOperationResult } from '../ui.js';
+import { formatBytes, showOperationResult, showConfirmationPrompt } from '../ui.js';
 import { rendererEvents } from '../events.js';
 
 let isBackupOperationInProgress = false;
@@ -78,7 +78,9 @@ function setupEventListeners() {
 
     // Backup & Restore
     document.getElementById('backup-btn').addEventListener('click', async () => {
-        if (isBackupOperationInProgress || !confirm('This will overwrite any existing backup. Continue?')) return;
+        if (isBackupOperationInProgress) return;
+        const confirmed = await showConfirmationPrompt('Confirm Backup', '<p>This will overwrite any existing backup. Continue?</p>', 'Backup', 'Cancel');
+        if (!confirmed) return;
         setOperationInProgress(true, 'Backing up files...');
         const result = await window.backup.startBackup();
         setOperationInProgress(false);
@@ -87,7 +89,14 @@ function setupEventListeners() {
     });
 
     document.getElementById('restore-btn').addEventListener('click', async () => {
-        if (isBackupOperationInProgress || !confirm('DANGER: This will delete your current game data and replace it with the backup. Continue?')) return;
+        if (isBackupOperationInProgress) return;
+        const confirmed = await showConfirmationPrompt(
+            'Confirm Restore',
+            '<p><strong>DANGER:</strong> This will delete your current game data and replace it with the backup. This action cannot be undone.</p>',
+            'Restore',
+            'Cancel'
+        );
+        if (!confirmed) return;
         setOperationInProgress(true, 'Restoring files...');
         const result = await window.backup.startRestore();
         setOperationInProgress(false);
@@ -98,14 +107,23 @@ function setupEventListeners() {
     // Registry (Windows only)
     if (window.appInfo.platform === 'win32') {
         document.getElementById('backup-registry-btn').addEventListener('click', async () => {
-            if (isBackupOperationInProgress || !confirm('This will overwrite any existing registry backup. Continue?')) return;
+            if (isBackupOperationInProgress) return;
+            const confirmed = await showConfirmationPrompt('Confirm Registry Backup', '<p>This will overwrite any existing registry backup. Continue?</p>', 'Backup', 'Cancel');
+            if (!confirmed) return;
             showOperationResult('Backing up registry...');
             const result = await window.backup.startRegistryBackup();
             showOperationResult(result.success ? 'Registry backup successful!' : `Backup failed: ${result.error}`, !result.success);
             renderBackupStatus();
         });
         document.getElementById('restore-registry-btn').addEventListener('click', async () => {
-            if (isBackupOperationInProgress || !confirm('DANGER: This will overwrite current game registry settings with the backup. Continue?')) return;
+            if (isBackupOperationInProgress) return;
+            const confirmed = await showConfirmationPrompt(
+                'Confirm Registry Restore',
+                '<p><strong>DANGER:</strong> This will overwrite current game registry settings with the backup. This action cannot be undone.</p>',
+                'Restore',
+                'Cancel'
+            );
+            if (!confirmed) return;
             showOperationResult('Restoring registry...');
             const result = await window.backup.startRegistryRestore();
             showOperationResult(result.success ? 'Registry restore successful!' : `Restore failed: ${result.error}`, !result.success);

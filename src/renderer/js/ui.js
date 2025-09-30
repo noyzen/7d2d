@@ -122,6 +122,7 @@ export function showConfirmationPrompt(title, htmlContent, confirmText = 'Confir
     textEl.innerHTML = htmlContent;
     okBtn.textContent = confirmText;
     cancelBtn.textContent = cancelText;
+    okBtn.className = 'modal-btn confirm-btn';
 
     overlay.classList.remove('hidden');
     okBtn.focus();

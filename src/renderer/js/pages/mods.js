@@ -1,6 +1,6 @@
 import { rendererEvents } from '../events.js';
 import { settings, saveSettings } from '../state.js';
-import { showPrompt } from '../ui.js';
+import { showPrompt, showConfirmationPrompt, showAlert } from '../ui.js';
 
 let allMods = [];
 let searchQuery = '';
@@ -60,7 +60,7 @@ function createModElement(mod, isDisplayedAsEnabled) {
             renderModSetActions();
             rendererEvents.emit('mods:changed');
         } else {
-            alert(`Error toggling mod: ${result.error}`);
+            await showAlert('Error', `Could not toggle mod: ${result.error}`);
         }
         modEl.classList.remove('processing');
     } else { // Mod Set Edit Mode: Modify the set definition in memory
@@ -130,8 +130,14 @@ function renderModSets() {
             renderModLists();
         });
         
-        setCard.querySelector('.delete-set-btn').addEventListener('click', () => {
-            if (!confirm(`Are you sure you want to delete the mod set "${set.name}"?`)) return;
+        setCard.querySelector('.delete-set-btn').addEventListener('click', async () => {
+            const confirmed = await showConfirmationPrompt(
+                'Delete Mod Set',
+                `<p>Are you sure you want to delete the mod set <strong>"${set.name}"</strong>?</p>`,
+                'Delete',
+                'Cancel'
+            );
+            if (!confirmed) return;
             settings.modSets = settings.modSets.filter(s => s.name !== set.name);
             saveSettings();
             if (selectedModSetName === set.name) {
@@ -232,7 +238,13 @@ function renderModLists() {
 }
 
 async function applyModList(modFolderNames, confirmationMessage) {
-    if (!confirm(confirmationMessage)) return;
+    const confirmed = await showConfirmationPrompt(
+        'Apply Mod Configuration',
+        `<p>${confirmationMessage}</p>`,
+        'Apply',
+        'Cancel'
+    );
+    if (!confirmed) return;
 
     const listEl = getEl('mod-list');
     const scrollPosition = listEl ? listEl.scrollTop : 0;
@@ -241,10 +253,10 @@ async function applyModList(modFolderNames, confirmationMessage) {
     renderModLists();
     const result = await window.mods.applyModSet({ modSetFolderNames: modFolderNames });
     if (!result.success) {
-        alert(`Error applying mods: ${result.error}`);
+        await showAlert('Error', `Error applying mods: ${result.error}`);
     }
-    if (result.warnings) {
-        alert(`The mod set was applied, but with some issues:\n- ${result.warnings.join('\n- ')}`);
+    if (result.warnings && result.warnings.length > 0) {
+        await showAlert('Warning', `<p>The mod set was applied, but with some issues:</p><ul style="text-align: left; margin-left: 20px;"><li>${result.warnings.join('</li><li>')}</li></ul>`);
     }
     await loadMods(scrollPosition);
     rendererEvents.emit('mods:changed');
@@ -295,7 +307,13 @@ function setupEventListeners() {
 
         const existingSetIndex = settings.modSets.findIndex(s => s.name === setName);
         if (existingSetIndex > -1) {
-            if (!confirm(`A mod set named "${setName}" already exists. Overwrite it?`)) {
+            const confirmed = await showConfirmationPrompt(
+                'Overwrite Mod Set',
+                `<p>A mod set named <strong>"${setName}"</strong> already exists. Overwrite it?</p>`,
+                'Overwrite',
+                'Cancel'
+            );
+            if (!confirmed) {
                 return;
             }
             settings.modSets.splice(existingSetIndex, 1);

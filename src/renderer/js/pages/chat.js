@@ -1,4 +1,4 @@
-import { sanitizeText } from '../ui.js';
+import { sanitizeText, showConfirmationPrompt } from '../ui.js';
 import { settings } from '../state.js';
 import { rendererEvents } from '../events.js';
 import { resetUnreadMessages } from '../notifications.js';
@@ -115,7 +115,13 @@ function setupEventListeners() {
     }));
 
     document.getElementById('clear-chat-btn')?.addEventListener('click', async () => {
-        if (confirm('Are you sure you want to permanently delete the chat history? This cannot be undone.')) {
+        const confirmed = await showConfirmationPrompt(
+            'Clear Chat History',
+            '<p>Are you sure you want to permanently delete the chat history? This cannot be undone.</p>',
+            'Delete',
+            'Cancel'
+        );
+        if (confirmed) {
             await window.lan.clearChatHistory();
             const chatMessagesEl = document.getElementById('chat-messages');
             chatMessagesEl.innerHTML = '<div class="chat-notice">Chat history has been cleared.</div>';
