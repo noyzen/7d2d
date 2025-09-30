@@ -360,7 +360,7 @@ ipcMain.handle('launcher:start-game', async (_, settings) => {
     return { error: `7DaysToDie.exe not found in the launcher directory!` };
   }
 
-  const { playerName, configEditorRules, registryEditorRules } = settings;
+  const { playerName, configEditorRules, registryEditorRules, launchParameters } = settings;
 
   // --- Apply config file edits before launching ---
   if (playerName && configEditorRules && configEditorRules.length > 0) {
@@ -449,8 +449,41 @@ ipcMain.handle('launcher:start-game', async (_, settings) => {
     }
   }
 
+  // --- Construct Launch Parameters ---
+  const gameArgs = [];
+  const LAUNCH_PARAM_TYPES = {
+    'AllowCrossplay': 'bool', 'AllowJoinConfigModded': 'bool', 'LoadSaveGame': 'bool', 'LocalizationChecks': 'bool', 'NoXInput': 'bool', 'SkipNewsScreen': 'bool', 'PlayerPrefsFile': 'bool',
+    'DebugNet': 'object', 'DebugPackages': 'object', 'ExportCustomAtlases': 'object', 'NoEAC': 'object', 'NoGameSense': 'object', 'NoLiteNetLib': 'object', 'NoRakNet': 'object', 'NoUNet': 'object', 'Quick-Continue': 'object', 'SkipIntro': 'object', 'DisableNativeInput': 'object', 'Submission': 'object',
+    'CrossPlatform': 'string', 'DebugAchievements': 'string', 'DebugEAC': 'string', 'DebugEOS': 'string', 'DebugInput': 'string', 'DebugSessions': 'string', 'DebugShapes': 'string', 'DebugXui': 'string', 'Language': 'string', 'LogFile': 'string', 'NewPrefabsMod': 'string', 'Platform': 'string', 'ServerPlatforms': 'string', 'SessionInvite': 'string', 'UserDataFolder': 'string', 'MapChunkDatabase': 'string',
+    'MaxWorldSizeClient': 'string', 'MaxWorldSizeHost': 'string',
+    'dedicated': 'flag'
+  };
+
+  if (launchParameters) {
+    for (const key in launchParameters) {
+        const value = launchParameters[key];
+        const type = LAUNCH_PARAM_TYPES[key];
+        if (!type) continue;
+
+        switch (type) {
+            case 'bool':
+                gameArgs.push(`-${key}=${value}`);
+                break;
+            case 'object':
+            case 'flag':
+                if (value === true) gameArgs.push(`-${key}`);
+                break;
+            case 'string':
+                if (typeof value === 'string' && value.trim() !== '') {
+                    gameArgs.push(`-${key}=${value.trim()}`);
+                }
+                break;
+        }
+    }
+  }
+
   try {
-    const child = spawn(GAME_EXE_PATH, [], {
+    const child = spawn(GAME_EXE_PATH, gameArgs, {
       detached: true,
       stdio: 'ignore',
       cwd: CWD,

@@ -5,6 +5,7 @@ let settings = {
   playerName: 'Survivor',
   configEditorRules: [],
   registryEditorRules: [],
+  launchParameters: {},
   aboutPage: {
     title: 'About This Launcher',
     creator: 'Your Name Here',
@@ -18,6 +19,52 @@ let selfId = null;
 let unreadMessageCount = 0;
 let logoClickCount = 0;
 let logoClickTimer = null;
+
+// --- LAUNCH PARAMETERS CONFIG ---
+const LAUNCH_PARAMETERS_CONFIG = {
+    // booleans
+    'AllowCrossplay': { type: 'bool', description: 'Allow crossplay between platforms.' },
+    'AllowJoinConfigModded': { type: 'bool', description: 'Allow joining modded servers.' },
+    'LoadSaveGame': { type: 'bool', description: 'Load a specific save game on start.' },
+    'LocalizationChecks': { type: 'bool', description: 'Enable localization checks.' },
+    'NoXInput': { type: 'bool', description: 'Disable XInput support.' },
+    'PlayerPrefsFile': { type: 'bool', description: 'Use a specific player preferences file.' },
+    'SkipNewsScreen': { type: 'bool', description: 'Skip the news screen on startup.' },
+    // objects (flags)
+    'DebugNet': { type: 'object', description: 'Enable network debugging.' },
+    'DebugPackages': { type: 'object', description: 'Enable package debugging.' },
+    'DisableNativeInput': { type: 'object', description: 'Disable native input handling.' },
+    'ExportCustomAtlases': { type: 'object', description: 'Export custom atlases.' },
+    'NoEAC': { type: 'object', description: 'Disable Easy Anti-Cheat.' },
+    'NoGameSense': { type: 'object', description: 'Disable SteelSeries GameSense.' },
+    'NoLiteNetLib': { type: 'object', description: 'Disable LiteNetLib networking.' },
+    'NoRakNet': { type: 'object', description: 'Disable RakNet networking.' },
+    'NoUNet': { type: 'object', description: 'Disable UNet networking.' },
+    'Quick-Continue': { type: 'object', description: 'Quickly continue the last game.' },
+    'SkipIntro': { type: 'object', description: 'Skip the intro video.' },
+    'Submission': { type: 'object', description: 'Enable submission mode (no value).' },
+    'dedicated': { type: 'flag', description: 'Run in dedicated server mode.' },
+    // strings & ints
+    'CrossPlatform': { type: 'string', description: 'Specify cross-platform service.' },
+    'DebugAchievements': { type: 'string', description: 'Debug achievements (e.g., verbose).' },
+    'DebugEAC': { type: 'string', description: 'Debug EAC (e.g., verbose).' },
+    'DebugEOS': { type: 'string', description: 'Debug EOS (e.g., verbose).' },
+    'DebugInput': { type: 'string', description: 'Debug input (e.g., verbose).' },
+    'DebugSessions': { type: 'string', description: 'Debug sessions (e.g., verbose).' },
+    'DebugShapes': { type: 'string', description: 'Debug shapes (e.g., verbose).' },
+    'DebugXui': { type: 'string', description: 'Debug XUI (e.g., verbose).' },
+    'Language': { type: 'string', description: 'Set the game language (e.g., "english").' },
+    'LogFile': { type: 'string', description: 'Specify a custom log file name.' },
+    'MapChunkDatabase': { type: 'string', description: 'Set map chunk database type.' },
+    'MaxWorldSizeClient': { type: 'int', description: 'Max world size for clients.' },
+    'MaxWorldSizeHost': { type: 'int', description: 'Max world size for hosts.' },
+    'NewPrefabsMod': { type: 'string', description: 'Load prefabs from a specific mod.' },
+    'Platform': { type: 'string', description: 'Force a specific platform.' },
+    'ServerPlatforms': { type: 'string', description: 'Allowed server platforms.' },
+    'SessionInvite': { type: 'string', description: 'Accept a session invite.' },
+    'UserDataFolder': { type: 'string', description: 'Specify a custom user data folder.' },
+};
+
 
 // --- DOM ELEMENTS ---
 // Window Controls
@@ -69,6 +116,7 @@ const aboutEditorTitle = document.getElementById('about-editor-title');
 const aboutEditorCreator = document.getElementById('about-editor-creator');
 const aboutEditorWebsite = document.getElementById('about-editor-website');
 const aboutEditorDescription = document.getElementById('about-editor-description');
+const launchParamsContainer = document.getElementById('launch-params-container');
 
 
 // Chat Page
@@ -140,6 +188,7 @@ navButtons.forEach(button => {
       renderConfigEditorRules();
       renderRegistryRules();
       renderAboutPageEditor();
+      renderLaunchParameters();
     } else if (pageId === 'page-chat') {
       // Clear notifications when entering chat
       unreadMessageCount = 0;
@@ -683,6 +732,59 @@ aboutEditorCreator.addEventListener('input', handleAboutEditorChange);
 aboutEditorWebsite.addEventListener('input', handleAboutEditorChange);
 aboutEditorDescription.addEventListener('input', handleAboutEditorChange);
 
+// Launch Parameters
+function renderLaunchParameters() {
+    if (!launchParamsContainer) return;
+    launchParamsContainer.innerHTML = '';
+    if (!settings.launchParameters) settings.launchParameters = {};
+
+    const sortedKeys = Object.keys(LAUNCH_PARAMETERS_CONFIG).sort((a, b) => a.localeCompare(b));
+
+    for (const key of sortedKeys) {
+        const config = LAUNCH_PARAMETERS_CONFIG[key];
+        const value = settings.launchParameters[key];
+
+        const paramEl = document.createElement('div');
+        paramEl.className = 'param-item';
+
+        let controlHtml = '';
+        if (config.type === 'bool' || config.type === 'object' || config.type === 'flag') {
+            const isChecked = value === true;
+            controlHtml = `
+                <label class="switch">
+                    <input type="checkbox" data-key="${key}" ${isChecked ? 'checked' : ''}>
+                    <span class="slider"></span>
+                </label>`;
+        } else if (config.type === 'string' || config.type === 'int') {
+            controlHtml = `<input type="text" data-key="${key}" value="${value || ''}">`;
+        }
+
+        paramEl.innerHTML = `
+            <div class="param-label">
+                <h3>${key}</h3>
+                <p>${config.description}</p>
+            </div>
+            <div class="param-control">
+                ${controlHtml}
+            </div>
+        `;
+        
+        const control = paramEl.querySelector('[data-key]');
+        control.addEventListener('change', (e) => {
+            const target = e.target;
+            const paramKey = target.dataset.key;
+            if (target.type === 'checkbox') {
+                settings.launchParameters[paramKey] = target.checked;
+            } else {
+                settings.launchParameters[paramKey] = target.value;
+            }
+            saveSettings();
+        });
+
+        launchParamsContainer.appendChild(paramEl);
+    }
+}
+
 
 // --- INITIALIZATION ---
 async function init() {
@@ -724,6 +826,21 @@ async function init() {
       keyName: 'PlayerName_h775476977',
       keyValueTemplate: '##7d2dlauncher-username##'
     }];
+  }
+
+  // Initialize launchParameters with defaults if they don't exist
+  if (!settings.launchParameters) {
+    settings.launchParameters = {};
+  }
+  for (const key in LAUNCH_PARAMETERS_CONFIG) {
+    if (settings.launchParameters[key] === undefined) {
+      const config = LAUNCH_PARAMETERS_CONFIG[key];
+      if (config.type === 'bool' || config.type === 'object' || config.type === 'flag') {
+        settings.launchParameters[key] = false;
+      } else {
+        settings.launchParameters[key] = '';
+      }
+    }
   }
 
   applySettings();

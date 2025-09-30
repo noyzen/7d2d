@@ -498,6 +498,65 @@ p { color: var(--fg-med); line-height: 1.6; }
     margin-top: 10px;
 }
 
+/* Launch Parameters */
+.launch-params-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 15px;
+}
+
+.param-item {
+    background: rgba(26, 26, 26, 0.7);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid var(--border-glass);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.param-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-right: 15px;
+    overflow: hidden;
+}
+
+.param-label h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-family: var(--font-body);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.param-label p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--fg-med);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.param-control {
+  flex-shrink: 0;
+}
+
+.param-control input[type="text"] {
+    padding: 6px 8px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border-glass);
+    border-radius: 4px;
+    color: var(--fg-light);
+    font-size: 0.9rem;
+    width: 150px;
+}
+.param-control input[type="text"]:focus {
+  outline: none;
+  border-color: var(--primary);
+}
 
 /* --- GENERIC UI CONTROLS (SWITCH) --- */
 .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
