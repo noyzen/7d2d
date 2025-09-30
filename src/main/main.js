@@ -47,14 +47,17 @@ function createDesktopShortcut() {
       return;
   }
 
-  const shortcutPath = path.join(app.getPath('desktop'), '7D2D Launcher.lnk');
+  const shortcutName = app.getName();
+  const shortcutPath = path.join(app.getPath('desktop'), `${shortcutName}.lnk`);
   const targetPath = app.getPath('exe');
 
   const options = {
       target: targetPath,
       cwd: path.dirname(targetPath),
       description: 'A feature-rich game launcher for 7 Days to Die.',
-      icon: path.join(CWD, 'appicon.png'),
+      // Use the executable itself as the icon source. This is more robust
+      // as the icon is embedded into the .exe by electron-builder.
+      icon: targetPath,
       iconIndex: 0,
   };
 
