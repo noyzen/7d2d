@@ -1,30 +1,38 @@
 <div class="page active" id="page-mods">
     <div class="page-header">
       <h1>Mod Manager</h1>
-      <p>Enable mods, create, and apply mod sets for different gameplay experiences.</p>
+      <p>Organize, enable, and apply groups of mods for different gameplay experiences.</p>
     </div>
 
-    <div class="mod-set-manager">
-        <label for="mod-set-select">Mod Sets:</label>
-        <select id="mod-set-select"></select>
-        <button id="apply-mod-set-btn" class="apply-btn" disabled><i class="fa-solid fa-check"></i> Apply Selected</button>
-        <button id="save-mod-set-btn"><i class="fa-solid fa-save"></i> Save Current as Set</button>
-        <button id="delete-mod-set-btn" class="delete-btn" disabled><i class="fa-solid fa-trash-can"></i> Delete Selected</button>
-    </div>
+    <div class="mods-layout">
+        <aside class="mod-sets-panel">
+            <div class="mod-sets-header">
+                <h2>Mod Sets</h2>
+                <button id="save-mod-set-btn" title="Save current enabled mods as a new set"><i class="fa-solid fa-save"></i> Save New Set</button>
+            </div>
+            <div id="mod-sets-list" class="mod-sets-list">
+                <!-- Mod sets will be dynamically inserted here -->
+            </div>
+            <div id="mod-set-actions" class="mod-set-actions">
+                <!-- Action buttons for selected set will appear here -->
+            </div>
+        </aside>
 
-    <div class="mod-controls-header">
-      <div class="mod-tabs">
-        <button id="enabled-tab" class="mod-tab active">Enabled <span id="enabled-mods-count" class="mod-count-badge">0</span></button>
-        <button id="disabled-tab" class="mod-tab">Disabled <span id="disabled-mods-count" class="mod-count-badge">0</span></button>
-      </div>
-      <div class="mod-search-wrapper">
-        <i class="fa-solid fa-search"></i>
-        <input type="search" id="mod-search-input" placeholder="Search mods...">
-      </div>
-    </div>
-    
-    <div id="mod-list" class="mod-list">
-      <!-- Mod cards will be dynamically inserted here -->
-      <div class="loading-spinner"></div>
+        <main class="mods-list-panel">
+            <div class="mod-controls-header">
+                <div class="mod-tabs">
+                    <button id="enabled-tab" class="mod-tab active">Enabled <span id="enabled-mods-count" class="mod-count-badge">0</span></button>
+                    <button id="disabled-tab" class="mod-tab">Disabled <span id="disabled-mods-count" class="mod-count-badge">0</span></button>
+                </div>
+                <div class="mod-search-wrapper">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="search" id="mod-search-input" placeholder="Search mods...">
+                </div>
+            </div>
+            <div id="mod-list" class="mod-list">
+                <!-- Mod cards will be dynamically inserted here -->
+                <div class="loading-spinner"></div>
+            </div>
+        </main>
     </div>
 </div>
