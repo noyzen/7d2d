@@ -27,25 +27,47 @@ const CHAT_HISTORY_PATH = path.join(LAUNCHER_FILES_PATH, 'chathistory.json');
 // --- HELPERS ---
 
 function getLocalIp() {
-    const networkInterfaces = os.networkInterfaces();
-    // Iterate through all network interfaces to find a suitable private IPv4 address.
-    for (const interfaceName in networkInterfaces) {
-        const networkInterface = networkInterfaces[interfaceName];
-        for (const interfaceInfo of networkInterface) {
-            // We are looking for a non-internal IPv4 address within private ranges.
-            if (interfaceInfo.family === 'IPv4' && !interfaceInfo.internal) {
-                // Check for standard private IP ranges (192.168.x.x, 10.x.x, 172.16.x.x-172.31.x.x)
-                if (interfaceInfo.address.startsWith('192.168.') || 
-                    interfaceInfo.address.startsWith('10.') || 
-                    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(interfaceInfo.address)) {
-                    // Found a suitable local LAN IP. Return it.
-                    return interfaceInfo.address;
+    const interfaces = os.networkInterfaces();
+    const candidates = [];
+
+    // Iterate over all network interfaces
+    for (const name of Object.keys(interfaces)) {
+        for (const net of interfaces[name]) {
+            // Filter for non-internal IPv4 addresses
+            if (net.family === 'IPv4' && !net.internal) {
+                // Strict check for private IP ranges, as this is a LAN-only feature.
+                const isPrivate = net.address.startsWith('192.168.') ||
+                                  net.address.startsWith('10.') ||
+                                  /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(net.address);
+
+                if (isPrivate) {
+                    // Score interfaces to prioritize physical connections over virtual ones (like VPNs)
+                    let score = 0;
+                    const lowerName = name.toLowerCase();
+                    if (lowerName.includes('ethernet') || lowerName.includes('eth')) {
+                        score = 30; // High score for wired connections
+                    } else if (lowerName.includes('wi-fi') || lowerName.includes('wlan')) {
+                        score = 20; // Medium score for wireless
+                    } else {
+                        score = 10; // Low score for other interfaces (e.g., virtual, VPN)
+                    }
+                    candidates.push({ address: net.address, score: score });
                 }
             }
         }
     }
-    // If no suitable private IP was found after checking all interfaces, return null.
-    return null;
+
+    // If no candidates were found, return null
+    if (candidates.length === 0) {
+        return null;
+    }
+
+    // Sort by score descending to get the best candidate first
+    candidates.sort((a, b) => b.score - a.score);
+
+    // Return the address of the highest-scored interface
+    console.log(`Found LAN IP candidates: ${JSON.stringify(candidates)}. Selected: ${candidates[0].address}`);
+    return candidates[0].address;
 }
 
 function loadChatHistory() {
