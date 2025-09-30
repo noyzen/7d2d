@@ -92,25 +92,18 @@ function createDesktopShortcut() {
         if (success) {
             console.log('Desktop shortcut created/updated successfully.');
         } else {
-            console.error('Failed to create/update desktop shortcut.');
-            dialog.showErrorBox(
-                'Shortcut Creation Failed',
-                'The application could not create a desktop shortcut. This may be due to folder permissions or security software.'
+            console.warn(
+                'Could not create/update desktop shortcut. This may be due to security software (e.g., Windows Controlled Folder Access). The application will continue to run normally.'
             );
         }
     } catch (e) {
-        console.error('Error while creating/updating desktop shortcut:', e);
-        dialog.showErrorBox(
-            'Shortcut Creation Error',
-            `An unexpected error occurred: ${e.message}`
-        );
+        // Instead of showing a dialog, just log the error and continue.
+        // This prevents a crash or error message for a non-critical feature.
+        console.error('An error occurred while creating/updating desktop shortcut:', e);
     }
   } catch(e) {
-      console.error('A critical error occurred during shortcut creation process:', e);
-      dialog.showErrorBox(
-        'Shortcut Creation Error',
-        `A critical error occurred: ${e.message}`
-      );
+      // Make the entire process non-blocking. If anything fails, just log and move on.
+      console.error('A critical error occurred during the shortcut creation process:', e);
   }
 }
 
