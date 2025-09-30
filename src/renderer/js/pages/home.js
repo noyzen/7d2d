@@ -49,7 +49,7 @@ function renderHomePageLanStatus(peers) {
   if (!homeLanStatus) return;
   const onlinePeers = peers.filter(p => p.status === 'online');
 
-  if (onlinePeers.length > 1) { 
+  if (onlinePeers.length > 0) { 
     homeLanStatus.classList.remove('hidden');
     getEl('lan-player-count').textContent = onlinePeers.length;
     const homePlayerList = getEl('home-player-list');
@@ -59,7 +59,7 @@ function renderHomePageLanStatus(peers) {
       .forEach(peer => {
         const peerEl = document.createElement('div');
         peerEl.className = 'home-player-item';
-        peerEl.innerHTML = `<span class="home-player-name">${peer.name}</span><span class="home-player-ip">${peer.address}</span>`;
+        peerEl.innerHTML = `<span class="home-player-name">${peer.name}</span><span class="home-player-ip">${peer.address || '...'}</span>`;
         if (peer.id === selfId) {
           peerEl.classList.add('is-self');
           peerEl.querySelector('.home-player-name').textContent += ' (You)';
@@ -77,6 +77,7 @@ function saveAndExitEditMode() {
     if (newName !== settings.playerName) {
         settings.playerName = newName;
         saveSettings();
+        window.lan.setUsername(settings.playerName);
     }
     
     getEl('player-name-display').textContent = settings.playerName;

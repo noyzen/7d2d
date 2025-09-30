@@ -15,6 +15,7 @@ const {
 
 let mainWindow;
 let lanSocket = null;
+let localIpAddress = null;
 let broadcastInterval = null;
 let peerCheckInterval = null;
 let peers = new Map();
@@ -27,9 +28,6 @@ const CHAT_HISTORY_PATH = path.join(LAUNCHER_FILES_PATH, 'chathistory.json');
 
 function getLocalIp() {
     const networkInterfaces = os.networkInterfaces();
-    const privateIps = [];
-    const otherIps = [];
-
     for (const interfaceName in networkInterfaces) {
         const networkInterface = networkInterfaces[interfaceName];
         for (const interfaceInfo of networkInterface) {
@@ -39,15 +37,12 @@ function getLocalIp() {
                     interfaceInfo.address.startsWith('10.') ||
                     /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(interfaceInfo.address)
                 ) {
-                    privateIps.push(interfaceInfo.address);
-                } else {
-                    otherIps.push(interfaceInfo.address);
+                    return interfaceInfo.address; // Return first private IP found
                 }
             }
         }
     }
-    // Prioritize private IPs, otherwise use any other IP, finally fallback to loopback.
-    return privateIps[0] || otherIps[0] || '127.0.0.1';
+    return null; // No private IP found
 }
 
 function loadChatHistory() {
@@ -145,7 +140,12 @@ function handleStartDiscovery() {
       return;
     }
     
-    const localIp = getLocalIp();
+    localIpAddress = getLocalIp();
+    if (!localIpAddress) {
+      console.warn('No suitable private LAN interface found. LAN discovery will not start.');
+      return;
+    }
+
     lanSocket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
 
     lanSocket.on('error', (err) => {
@@ -186,9 +186,9 @@ function handleStartDiscovery() {
       }
     });
 
-    lanSocket.bind(LAN_PORT, localIp, () => {
+    lanSocket.bind(LAN_PORT, localIpAddress, () => {
       lanSocket.setBroadcast(true);
-      console.log(`LAN socket bound to ${localIp}. Starting discovery...`);
+      console.log(`LAN socket bound to ${localIpAddress}. Starting discovery...`);
       broadcastInterval = setInterval(() => broadcastPacket('heartbeat'), BROADCAST_INTERVAL);
       broadcastPacket('heartbeat');
       peerCheckInterval = setInterval(checkPeers, BROADCAST_INTERVAL);
@@ -208,6 +208,7 @@ function handleStopDiscovery() {
     peers.clear();
     broadcastInterval = null;
     peerCheckInterval = null;
+    localIpAddress = null;
     console.log('LAN discovery stopped.');
   });
 }
@@ -269,7 +270,7 @@ exports.shutdown = () => {
 
 exports.setUsername = (username) => {
   currentUsername = username;
-  updatePeer(INSTANCE_ID, currentUsername, OS_USERNAME, getLocalIp());
+  updatePeer(INSTANCE_ID, currentUsername, OS_USERNAME, localIpAddress);
   sendPeerUpdate();
   broadcastPacket('heartbeat');
 };
