@@ -153,50 +153,48 @@
 .downloader-progress-bar-inner { width: 0%; height: 100%; background-color: var(--primary); border-radius: 3px; transition: width 0.3s ease; }
 
 
-/* --- PAGE: MODS --- */
+/* --- PAGE: MODS (REDESIGNED) --- */
 #page-mods {
     display: flex;
     flex-direction: column;
-    height: 100%; /* Make page fill the content area to constrain children */
+    height: 100%;
 }
 
 .mods-layout {
     display: grid;
     grid-template-columns: 320px 1fr;
-    gap: 25px;
+    gap: 30px;
     flex-grow: 1;
-    min-height: 0; /* Prevents overflow issues */
+    min-height: 0;
 }
 
+/* Left Panel: Mod Sets */
 .mod-sets-panel {
     display: flex;
     flex-direction: column;
-    gap: 15px;
     background: rgba(16, 16, 16, 0.5);
     border: 1px solid var(--border-glass);
     border-radius: 8px;
     padding: 20px;
+    min-height: 0;
+    overflow: hidden;
 }
+
 .mod-sets-header {
+    flex-shrink: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid var(--border-glass);
     padding-bottom: 15px;
+    margin-bottom: 15px;
 }
 .mod-sets-header h2 { margin: 0; font-size: 1.2rem; }
+
 #save-mod-set-btn {
-    background: transparent;
-    border: 1px solid var(--border-glass);
-    color: var(--fg-med);
-    padding: 6px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    background: transparent; border: 1px solid var(--border-glass); color: var(--fg-med);
+    padding: 6px 12px; border-radius: 5px; cursor: pointer; transition: all 0.2s ease;
+    font-size: 0.9rem; display: flex; align-items: center; gap: 8px;
 }
 #save-mod-set-btn:hover { background-color: rgba(0, 255, 127, 0.15); border-color: var(--primary); color: var(--primary); }
 
@@ -206,29 +204,18 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding-right: 5px; /* Give scrollbar some space */
+    padding-right: 10px;
+    margin-right: -10px;
 }
 
 .mod-set-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 12px;
-    border: 1px solid var(--border-glass);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
-    overflow: hidden;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 15px; border: 1px solid var(--border-glass); border-radius: 6px;
+    cursor: pointer; transition: all 0.2s ease; position: relative; overflow: hidden;
 }
 .mod-set-card::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 4px;
-    background-color: var(--primary);
-    transform: scaleY(0);
-    transition: transform 0.3s ease;
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+    background-color: var(--primary); transform: scaleY(0); transition: transform 0.3s ease;
     border-radius: 4px 0 0 4px;
 }
 .mod-set-card:hover { background-color: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.2); }
@@ -248,14 +235,16 @@
 .mod-set-card:hover .delete-set-btn { opacity: 1; }
 .delete-set-btn:hover { color: var(--error); background-color: rgba(255, 77, 77, 0.2); }
 
-#mod-set-actions { margin-top: auto; padding-top: 15px; border-top: 1px solid var(--border-glass); display: flex; flex-direction: column; gap: 10px; }
+#mod-set-actions {
+    flex-shrink: 0;
+    padding-top: 15px;
+    margin-top: 15px;
+    border-top: 1px solid var(--border-glass);
+    display: flex; flex-direction: column; gap: 10px;
+}
 .mod-set-action-btn {
-    width: 100%;
-    padding: 8px;
-    font-family: var(--font-heading);
-    font-size: 0.9rem;
-    border-radius: 6px; border: 1px solid;
-    cursor: pointer; transition: all 0.2s ease;
+    width: 100%; padding: 10px; font-family: var(--font-heading); font-size: 1rem;
+    border-radius: 6px; border: 1px solid; cursor: pointer; transition: all 0.2s ease;
     display: flex; align-items: center; justify-content: center; gap: 10px;
 }
 .mod-set-action-btn.apply { background-color: var(--primary); border-color: var(--primary); color: #0a0a0a; }
@@ -266,140 +255,82 @@
 .mod-set-action-btn.disable-all:hover:not(:disabled) { background-color: var(--error); color: white; }
 .mod-set-action-btn:disabled { opacity: 0.5; cursor: not-allowed; background-color: rgba(128, 128, 128, 0.1); border-color: var(--border-glass); color: var(--fg-med); box-shadow: none; }
 
+/* Right Panel: Mods List */
+.mods-list-panel {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
 
-.mods-list-panel { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; }
-.mod-controls-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 15px; }
+.mod-controls-header {
+    flex-shrink: 0;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 20px; margin-bottom: 15px;
+}
 .mod-search-wrapper { position: relative; }
 .mod-search-wrapper i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--fg-med); }
 #mod-search-input {
-    padding: 8px 12px 8px 35px; background: rgba(0,0,0,0.4);
-    border: 1px solid var(--border-glass); border-radius: 20px;
-    color: var(--fg-light); width: 250px;
+    padding: 8px 12px 8px 35px; background: rgba(0,0,0,0.4); border: 1px solid var(--border-glass);
+    border-radius: 20px; color: var(--fg-light); width: 250px;
 }
 #mod-search-input:focus { outline: none; border-color: var(--primary); }
 
-.mod-list { 
-    display: grid; 
-    grid-template-columns: 1fr; 
-    gap: 8px; 
-    overflow-y: auto; 
-    flex-grow: 1; 
-    padding-right: 5px; /* Give scrollbar some space */
-}
-.mod-card { 
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 12px;
-    background: rgba(26, 26, 26, 0.7);
-    border: 2px solid var(--border-glass);
-    border-radius: 6px;
-    transition: all 0.2s;
-    position: relative;
-    cursor: pointer;
-}
-.mod-card:hover {
-    background: rgba(40, 40, 40, 0.9);
-    border-color: rgba(255, 255, 255, 0.3);
+.mod-list {
+    flex-grow: 1;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 5px;
 }
 
-.mod-card.enabled {
-    border-color: var(--primary);
-    background: rgba(0, 255, 127, 0.1);
+.mod-card {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 15px; background: rgba(26, 26, 26, 0.7);
+    border: 2px solid var(--border-glass); border-radius: 6px;
+    transition: all 0.2s; position: relative; cursor: pointer;
 }
+.mod-card:hover { background: rgba(40, 40, 40, 0.9); border-color: rgba(255, 255, 255, 0.3); }
 
+.mod-card.enabled { border-color: var(--primary); background: rgba(0, 255, 127, 0.1); }
 .mod-card.enabled::before {
-    content: '\f00c'; /* fa-check */
-    font-family: "Font Awesome 6 Free";
-    font-weight: 900;
-    font-style: normal;
-    font-variant: normal;
-    text-rendering: auto;
-    -webkit-font-smoothing: antialiased;
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    right: 12px;
-    color: var(--primary);
-    font-size: 1.2rem;
-    text-shadow: 0 0 8px var(--primary-glow);
+    content: '\f00c'; font-family: "Font Awesome 6 Free"; font-weight: 900;
+    position: absolute; top: 50%; transform: translateY(-50%); right: 15px;
+    color: var(--primary); font-size: 1.2rem; text-shadow: 0 0 8px var(--primary-glow);
     transition: transform 0.2s ease;
 }
-.mod-card:hover.enabled::before {
-    transform: translateY(-50%) scale(1.1);
-}
+.mod-card:hover.enabled::before { transform: translateY(-50%) scale(1.1); }
 
 .mod-card.in-set::after {
-    content: '\f005'; /* fa-star */
-    font-family: "Font Awesome 6 Free";
-    font-weight: 900;
-    position: absolute;
-    bottom: 8px;
-    left: 8px;
-    color: var(--primary);
-    opacity: 0.5;
-    font-size: 0.8rem;
+    content: '\f005'; font-family: "Font Awesome 6 Free"; font-weight: 900;
+    position: absolute; bottom: 8px; left: 8px; color: var(--primary);
+    opacity: 0.5; font-size: 0.8rem;
 }
 
 .mod-info {
-    overflow: hidden;
-    padding-right: 35px;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    overflow: hidden; padding-right: 40px; min-width: 0;
+    display: flex; flex-direction: column; gap: 4px;
 }
 .mod-title {
-    margin: 0;
-    font-size: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    margin: 0; font-size: 1.05rem; display: flex; align-items: center;
+    gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.mod-meta {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    font-size: 0.8rem;
-    color: var(--fg-med);
-}
-.mod-author {
-    margin: 0;
-}
+.mod-meta { display: flex; align-items: center; gap: 15px; font-size: 0.8rem; color: var(--fg-med); }
+.mod-author { margin: 0; }
 .mod-version {
-    font-family: var(--font-body);
-    font-weight: normal;
-    background: rgba(0,0,0,0.3);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.75rem;
+    font-family: var(--font-body); font-weight: normal; background: rgba(0,0,0,0.3);
+    padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;
 }
-.mod-card.enabled .mod-author {
-    color: var(--primary);
-}
+.mod-card.enabled .mod-author { color: var(--primary); }
 .mod-desc {
-    font-size: 0.85rem;
-    margin: 0;
-    color: var(--fg-med);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    opacity: 0.8;
+    font-size: 0.85rem; margin: 0; color: var(--fg-med);
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.4;
 }
-.mod-card.invalid {
-    border-left-color: var(--error);
-    border-left-width: 4px;
-}
-.mod-card.invalid .mod-title {
-    color: var(--error);
-}
-.mod-card.invalid .mod-author {
-    color: var(--fg-med) !important;
-}
-
+.mod-card.invalid { border-left-color: var(--error); border-left-width: 4px; }
+.mod-card.invalid .mod-title { color: var(--error); }
+.mod-card.invalid .mod-author { color: var(--fg-med) !important; }
 
 /* --- PAGE: SETTINGS --- */
 .settings-container { display: flex; flex-direction: column; gap: 15px; max-width: 700px; }
