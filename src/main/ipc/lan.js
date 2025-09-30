@@ -104,6 +104,11 @@ function loadChatHistory() {
 
 function saveChatHistory() {
     try {
+        // Ensure the directory exists.
+        const dir = path.dirname(CHAT_HISTORY_PATH);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
         fs.writeFileSync(CHAT_HISTORY_PATH, JSON.stringify(chatHistory, null, 2));
     } catch (e) {
         console.error('Failed to save chat history:', e);
@@ -305,11 +310,9 @@ exports.shutdown = () => {
   peerCheckInterval = null;
   if (lanSocket) {
     broadcastPacket('disconnect');
-    // Give the packet a moment to send before closing
-    setTimeout(() => {
-        lanSocket.close();
-        lanSocket = null;
-    }, 100);
+    // Close the socket immediately. Don't wait, as the app is quitting.
+    lanSocket.close();
+    lanSocket = null;
   }
   console.log('LAN discovery stopped.');
 };

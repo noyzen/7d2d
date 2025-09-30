@@ -117,6 +117,10 @@ function handleGetInitialData() {
 function handleSaveSettings() {
   ipcMain.handle('launcher:save-settings', async (_, settings) => {
     try {
+      // Ensure the directory exists before writing.
+      if (!fs.existsSync(LAUNCHER_FILES_PATH)) {
+        fs.mkdirSync(LAUNCHER_FILES_PATH, { recursive: true });
+      }
       fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
       if (settings.playerName && settings.playerName !== lanIpc.getCurrentUsername()) {
         lanIpc.setUsername(settings.playerName);

@@ -301,7 +301,14 @@ function handleDownloadGame() {
                                 }
                             });
                             res.pipe(fileStream);
-                            fileStream.on('finish', () => { currentDownload.request = null; resolve(); });
+                            fileStream.on('finish', () => {
+                                currentDownload.request = null;
+                                if (currentDownload.isCancelled) {
+                                    reject(new Error('cancelled'));
+                                } else {
+                                    resolve();
+                                }
+                            });
                             fileStream.on('error', (err) => {
                                 if (err.code === 'EPERM') return reject(new Error('requires-admin'));
                                 reject(err);
@@ -315,7 +322,7 @@ function handleDownloadGame() {
             mainWindow?.webContents.send('transfer:complete', { success: true, type: 'full' });
             return { success: true };
         } catch (e) {
-            const isUserCancel = currentDownload.isCancelled;
+            const isUserCancel = currentDownload.isCancelled || e.message === 'cancelled';
             const finalError = isUserCancel ? 'cancelled'
                              : (e.message === 'requires-admin' || e.code === 'EPERM' || e.code === 'EBUSY') ? 'requires-admin'
                              : e.message;
