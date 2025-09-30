@@ -5,7 +5,20 @@ const { execFile } = require('child_process');
 const WindowState = require('electron-window-state');
 const { XMLParser } = require('fast-xml-parser');
 
-const CWD = app.isPackaged ? path.dirname(app.getPath('exe')) : process.cwd();
+let CWD;
+if (app.isPackaged) {
+  // For portable executables, electron-builder sets this env var to the directory of the original .exe.
+  // This is the correct way to get the path for portable apps that extract themselves to a temp dir.
+  if (process.env.PORTABLE_EXECUTABLE_DIR) {
+    CWD = process.env.PORTABLE_EXECUTABLE_DIR;
+  } else {
+    // For installed applications, the exe is in the right place relative to other files.
+    CWD = path.dirname(app.getPath('exe'));
+  }
+} else {
+  // In development, the working directory is the project root.
+  CWD = process.cwd();
+}
 
 // Paths
 const LAUNCHER_FILES_PATH = path.join(CWD, 'LauncherFiles');
