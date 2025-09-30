@@ -280,7 +280,7 @@ function handleDownloadGame() {
                 } else {
                     await fs.promises.mkdir(path.dirname(localPath), { recursive: true });
                     
-                    await new Promise((resolve, reject) => {
+                    const wasCancelledDuringDownload = await new Promise((resolve, reject) => {
                         if (currentDownload.isCancelled) return reject(new Error('cancelled'));
                         
                         const fileStream = fs.createWriteStream(localPath);
@@ -318,11 +318,8 @@ function handleDownloadGame() {
                             fileStream.on('finish', () => {
                                 fileStream.close(() => {
                                     currentDownload.request = null;
-                                    if (currentDownload.isCancelled) {
-                                        reject(new Error('cancelled'));
-                                    } else {
-                                        resolve();
-                                    }
+                                    // Resolve with cancellation status to handle race conditions
+                                    resolve(currentDownload.isCancelled);
                                 });
                             });
                             
@@ -339,9 +336,15 @@ function handleDownloadGame() {
                             if (fileStream.writable && !fileStream.closed) {
                                 fileStream.close();
                             }
+                            // This is the primary path for cancellation via req.destroy()
                             reject(new Error('cancelled'));
                         });
                     });
+
+                    // Explicitly check cancellation status after each file promise resolves
+                    if (wasCancelledDuringDownload || currentDownload.isCancelled) {
+                        throw new Error('cancelled');
+                    }
                 }
             }
             
