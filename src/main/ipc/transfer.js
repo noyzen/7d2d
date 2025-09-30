@@ -3,14 +3,31 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const { spawn } = require('child_process');
-const { CWD, LAUNCHER_FILES_PATH } = require('../constants');
+const { CWD } = require('../constants');
 const lanIpc = require('./lan');
 
 let mainWindow;
 let fileServer = null;
-let updateInfo = null;
 const activeDownloads = new Map();
 let downloadMonitorInterval = null;
+
+// This is the single source of truth for all files and folders that are part of a game transfer.
+// The running launcher '7d2dLauncher.exe' is INTENTIONALLY OMITTED.
+const GAME_ASSETS_TO_TRANSFER = [
+    // Folders
+    '#Steam-Manifests', '7DaysToDie_Data', 'BackupData', 'Data',
+    'DisabledMods', 'EasyAntiCheat', 'Launcher', 'LauncherFiles',
+    'Licenses', 'Logos', 'Mods', 'MonoBleedingEdge',
+    // Files
+    '7DaysToDie.exe', '7DaysToDie_EAC.exe', '7dLauncher.exe',
+    'installscript.vdf', 'MicrosoftGame.Config', 'nvngx_dlss.dll',
+    'NVUnityPlugin.dll', 'platform.cfg', 'platform.cfg.legit',
+    'serverconfig.xml', 'startdedicated.bat', 'steamclient64.dll',
+    'steam_appid.txt', 'tier0_s64.dll', 'UnityCrashHandler64.exe',
+    'UnityCrashHandler64.pdb', 'UnityPlayer.dll',
+    'UnityPlayer_Win64_player_mono_x64.pdb', 'vstdlib_s64.dll',
+    'WindowsPlayer_player_Master_mono_x64.pdb'
+];
 
 // --- FILE SERVER HELPERS ---
 
@@ -29,34 +46,40 @@ function monitorDownloads() {
     }
 }
 
-
-async function listFilesRecursive(dir) {
-    const exePath = app.getPath('exe');
+/**
+ * Generates a file list by walking through the GAME_ASSETS_TO_TRANSFER safelist.
+ * This ensures no unexpected files (like the running .exe) are ever offered for download.
+ */
+async function listAllowedFiles() {
     const fileList = [];
     
-    async function walk(currentDir) {
-        try {
-            const entries = await fs.promises.readdir(currentDir, { withFileTypes: true });
-            for (const entry of entries) {
-                const fullPath = path.join(currentDir, entry.name);
-                // Explicitly skip the running executable file on the host.
-                if (fullPath.toLowerCase() === exePath.toLowerCase()) continue;
-
-                const relativePath = path.relative(CWD, fullPath);
-                if (entry.isDirectory()) {
-                    fileList.push({ path: relativePath.replace(/\\/g, '/'), type: 'dir' });
-                    await walk(fullPath);
-                } else {
-                    const stats = await fs.promises.stat(fullPath);
-                    fileList.push({ path: relativePath.replace(/\\/g, '/'), size: stats.size, type: 'file' });
-                }
+    async function walkDirRecursive(startDir, relativeBase) {
+        const entries = await fs.promises.readdir(startDir, { withFileTypes: true });
+        for (const entry of entries) {
+            const fullPath = path.join(startDir, entry.name);
+            const relativePath = path.join(relativeBase, entry.name);
+            if (entry.isDirectory()) {
+                fileList.push({ path: relativePath.replace(/\\/g, '/'), type: 'dir' });
+                await walkDirRecursive(fullPath, relativePath);
+            } else {
+                const stats = await fs.promises.stat(fullPath);
+                fileList.push({ path: relativePath.replace(/\\/g, '/'), size: stats.size, type: 'file' });
             }
-        } catch (e) {
-            console.error(`Error walking directory ${currentDir}:`, e);
         }
     }
-    
-    await walk(dir);
+
+    for (const assetName of GAME_ASSETS_TO_TRANSFER) {
+        const fullPath = path.join(CWD, assetName);
+        if (!fs.existsSync(fullPath)) continue;
+
+        const stats = await fs.promises.stat(fullPath);
+        if (stats.isDirectory()) {
+            fileList.push({ path: assetName.replace(/\\/g, '/'), type: 'dir' });
+            await walkDirRecursive(fullPath, assetName);
+        } else {
+            fileList.push({ path: assetName.replace(/\\/g, '/'), size: stats.size, type: 'file' });
+        }
+    }
     return fileList;
 }
 
@@ -77,7 +100,7 @@ function startFileServer() {
 
             if (url.pathname === '/list-files') {
                 try {
-                    const files = await listFilesRecursive(CWD);
+                    const files = await listAllowedFiles();
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify(files));
                 } catch (e) {
@@ -157,65 +180,40 @@ function handleToggleSharing() {
 }
 
 function handleDownloadGame() {
-    ipcMain.handle('transfer:download-game', async (_, { host, type }) => {
+    ipcMain.handle('transfer:download-game', async (_, { host }) => {
         try {
-            // 1. Get file list from host
+            // 1. Get file list from host (this list is guaranteed to be safe)
             const fileListUrl = `http://${host.address}:${host.sharePort}/list-files`;
             const fileListResponse = await new Promise((resolve, reject) => http.get(fileListUrl, resolve).on('error', reject));
             let fileListJson = '';
             for await (const chunk of fileListResponse) { fileListJson += chunk; }
-            const allFiles = JSON.parse(fileListJson);
-
-            // Filter files based on download type
-            const filesToDownload = type === 'launcher' 
-                ? allFiles.filter(f => f.path === 'LauncherFiles' || f.path.startsWith('LauncherFiles/'))
-                : allFiles;
+            const filesToDownload = JSON.parse(fileListJson);
 
             const totalSize = filesToDownload.filter(f => f.type === 'file').reduce((sum, f) => sum + f.size, 0);
             let downloadedSize = 0;
             let lastProgressTime = Date.now();
             let lastDownloadedSize = 0;
 
-            const tempSuffix = '.7d2d-dl-new';
-
-            // 2. Clear target directory if needed using a safe-list
-            if (type === 'full') {
-                const itemsToDelete = [
-                    // Folders
-                    '#Steam-Manifests', '7DaysToDie_Data', 'BackupData', 'Data',
-                    'DisabledMods', 'EasyAntiCheat', 'Launcher', 'LauncherFiles',
-                    'Licenses', 'Logos', 'Mods', 'MonoBleedingEdge',
-                    // Files
-                    '7DaysToDie.exe', '7DaysToDie_EAC.exe', '7dLauncher.exe',
-                    'installscript.vdf', 'MicrosoftGame.Config', 'nvngx_dlss.dll',
-                    'NVUnityPlugin.dll', 'platform.cfg', 'platform.cfg.legit',
-                    'serverconfig.xml', 'startdedicated.bat', 'steamclient64.dll',
-                    'steam_appid.txt', 'tier0_s64.dll', 'UnityCrashHandler64.exe',
-                    'UnityCrashHandler64.pdb', 'UnityPlayer.dll',
-                    'UnityPlayer_Win64_player_mono_x64.pdb', 'vstdlib_s64.dll',
-                    'WindowsPlayer_player_Master_mono_x64.pdb'
-                ];
-
-                for (const item of itemsToDelete) {
-                    const fullPath = path.join(CWD, item);
-                    if (fs.existsSync(fullPath)) {
-                        try {
-                            await fs.promises.rm(fullPath, { recursive: true, force: true });
-                        } catch (e) {
-                            console.warn(`Could not delete item during cleanup (might be locked): ${fullPath}`, e.message);
-                            if (e.code === 'EPERM' || e.code === 'EBUSY') {
-                                throw new Error('requires-admin');
-                            }
-                            throw e; // Re-throw other errors
+            // 2. Clear target directory using the same safe-list
+            for (const item of GAME_ASSETS_TO_TRANSFER) {
+                const fullPath = path.join(CWD, item);
+                if (fs.existsSync(fullPath)) {
+                    try {
+                        await fs.promises.rm(fullPath, { recursive: true, force: true });
+                    } catch (e) {
+                        console.warn(`Could not delete item during cleanup (might be locked): ${fullPath}`, e.message);
+                        if (e.code === 'EPERM' || e.code === 'EBUSY' || (e.message && e.message.toLowerCase().includes('operation not permitted'))) {
+                            throw new Error('requires-admin');
                         }
+                        throw e; // Re-throw other errors
                     }
                 }
             }
-
+            
             // 3. Download files
             for (let i = 0; i < filesToDownload.length; i++) {
                 const file = filesToDownload[i];
-                const localPath = path.join(CWD, type === 'launcher' ? file.path.replace('LauncherFiles', 'LauncherFiles' + tempSuffix) : file.path);
+                const localPath = path.join(CWD, file.path);
 
                 if (file.type === 'dir') {
                     try {
@@ -255,42 +253,23 @@ function handleDownloadGame() {
                 }
             }
 
-            // 4. Finalize launcher files update (no restart needed)
-            if (type === 'launcher') {
-                const oldPath = LAUNCHER_FILES_PATH;
-                const newPath = LAUNCHER_FILES_PATH + tempSuffix;
-                if (fs.existsSync(oldPath)) {
-                    await fs.promises.rm(oldPath, { recursive: true, force: true });
-                }
-                await fs.promises.rename(newPath, oldPath);
-            }
-
-            mainWindow?.webContents.send('transfer:complete', { success: true, type });
+            mainWindow?.webContents.send('transfer:complete', { success: true, type: 'full' });
             return { success: true };
         } catch (e) {
             console.error('Download failed:', e);
             const isPermissionError = e.code === 'EPERM' || e.code === 'EBUSY' || (e.message && (e.message.toLowerCase().includes('permission') || e.message.toLowerCase().includes('access is denied')));
-            const finalError = isPermissionError ? 'requires-admin' : e.message;
+            const finalError = e.message === 'requires-admin' || isPermissionError ? 'requires-admin' : e.message;
             mainWindow?.webContents.send('transfer:complete', { success: false, error: finalError });
             return { success: false, error: finalError };
         }
     });
 }
 
-// This function is kept in case a future update type needs it, but it's not used by the current flow.
 function handleRestartForUpdate() {
     ipcMain.handle('transfer:restart-for-update', () => {
-        if (updateInfo && updateInfo.scriptPath && process.platform === 'win32') {
-            try {
-                spawn('cmd.exe', ['/c', `start "" "${updateInfo.scriptPath}"`], { detached: true, stdio: 'ignore' }).unref();
-                app.quit();
-            } catch (e) {
-                console.error('Failed to run update script:', e);
-            }
-        }
+        // This is now obsolete as launcher self-update is removed, but kept for API consistency.
     });
 }
-
 
 exports.init = (mw) => {
   mainWindow = mw;

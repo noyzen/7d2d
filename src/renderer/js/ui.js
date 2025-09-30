@@ -222,21 +222,9 @@ export function showHostSelectionPrompt(hosts) {
     });
     hostListHtml += '</div>';
 
-    const optionsHtml = `
-        <div class="download-options">
-            <label for="download-type-full">
-                <input type="radio" name="download-type" id="download-type-full" value="full" checked>
-                Full Game (Overwrites current game folder)
-            </label>
-            <label for="download-type-launcher">
-                <input type="radio" name="download-type" id="download-type-launcher" value="launcher">
-                Launcher Only (Updates launcher files)
-            </label>
-        </div>
-        <p id="host-selection-error" class="modal-error-message hidden"></p>
-    `;
+    const errorHtml = `<p id="host-selection-error" class="modal-error-message hidden"></p>`;
 
-    textEl.innerHTML = `<div id="custom-prompt-content">${hostListHtml}${optionsHtml}</div>`;
+    textEl.innerHTML = `<div id="custom-prompt-content">${hostListHtml}${errorHtml}</div>`;
     overlay.classList.remove('hidden');
 
     return new Promise((resolve) => {
@@ -251,14 +239,13 @@ export function showHostSelectionPrompt(hosts) {
         okBtn.onclick = () => {
             const errorEl = document.getElementById('host-selection-error');
             const selectedHostId = document.querySelector('input[name="host-selection"]:checked')?.value;
-            const selectedType = document.querySelector('input[name="download-type"]:checked')?.value;
             
-            if (selectedHostId && selectedType) {
+            if (selectedHostId) {
                 errorEl.classList.add('hidden');
                 const selectedHost = hosts.find(h => h.id === selectedHostId);
-                close({ host: selectedHost, type: selectedType });
+                close({ host: selectedHost });
             } else {
-                errorEl.textContent = 'Please select a host and a download type.';
+                errorEl.textContent = 'Please select a host.';
                 errorEl.classList.remove('hidden');
             }
         };

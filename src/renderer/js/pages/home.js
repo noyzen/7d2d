@@ -195,27 +195,17 @@ function setupEventListeners() {
         const selection = await showHostSelectionPrompt(sharingPeers);
         if (!selection) return;
 
-        const { host, type } = selection;
+        const { host } = selection;
         const gamePath = await window.launcher.getGamePath();
         const safeGamePath = sanitizeText(gamePath);
 
-        let title, message;
-        if (type === 'full') {
-            title = 'Confirm Full Game Download';
-            message = `
-                <p><strong>DANGER!</strong></p>
-                <p>This will <strong>DELETE KNOWN GAME FILES</strong> inside the following directory (except for the launcher itself) and replace them with files from the host.</p>
-                <div class="modal-path-display">${safeGamePath}</div>
-                <p>This action cannot be undone. Are you absolutely sure you want to continue?</p>
-            `;
-        } else {
-            title = 'Confirm Launcher Update';
-            message = `
-                <p>This will replace your current launcher and its support files in the directory:</p>
-                <div class="modal-path-display">${safeGamePath}</div>
-                <p>The launcher will need to restart to apply the changes. Continue?</p>
-            `;
-        }
+        const title = 'Confirm Full Game Download';
+        const message = `
+            <p><strong>DANGER!</strong></p>
+            <p>This will <strong>DELETE KNOWN GAME FILES</strong> inside the following directory (except for the launcher itself) and replace them with files from the host.</p>
+            <div class="modal-path-display">${safeGamePath}</div>
+            <p>This action cannot be undone. Are you absolutely sure you want to continue?</p>
+        `;
 
         const confirmed = await showConfirmationPrompt(title, message, 'Confirm', 'Cancel');
 
@@ -225,7 +215,7 @@ function setupEventListeners() {
 
             // Show progress modal
             const overlay = document.getElementById('transfer-progress-overlay');
-            document.getElementById('transfer-progress-title').textContent = type === 'full' ? 'Downloading Full Game...' : 'Downloading Launcher Update...';
+            document.getElementById('transfer-progress-title').textContent = 'Downloading Full Game...';
             document.getElementById('transfer-progress-content').classList.remove('hidden');
             document.getElementById('transfer-complete-message').textContent = '';
             document.getElementById('transfer-restart-btn').classList.add('hidden');
@@ -233,7 +223,7 @@ function setupEventListeners() {
             overlay.classList.remove('hidden');
             
             // Start download and handle potential errors
-            const result = await window.transfer.downloadGame({ host, type });
+            const result = await window.transfer.downloadGame({ host });
             if (!result.success) {
                 document.getElementById('transfer-progress-overlay').classList.add('hidden');
                 handleDownloadError(result.error);
