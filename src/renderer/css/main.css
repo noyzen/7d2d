@@ -31,7 +31,6 @@ body {
   background-repeat: no-repeat;
   color: var(--fg-light);
   font-family: var(--font-body);
-  user-select: none;
   display: flex;
   flex-direction: column;
 }
@@ -62,7 +61,7 @@ a:hover { text-decoration: underline; }
   border-bottom: 1px solid var(--border-glass);
   z-index: 1000;
 }
-.drag-region { -webkit-app-region: drag; flex: 1; height: 100%; display: flex; align-items: center; padding-left: 12px; }
+.drag-region { -webkit-app-region: drag; flex: 1; height: 100%; display: flex; align-items: center; padding-left: 12px; user-select: none; }
 .window-title { font-size: 13px; font-family: var(--font-heading); opacity: 0.8; }
 .window-controls { display: flex; height: 100%; }
 .window-controls button {

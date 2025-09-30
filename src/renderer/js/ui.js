@@ -127,18 +127,7 @@ export function showConfirmationPrompt(title, htmlContent, confirmText = 'Confir
     okBtn.focus();
 
     return new Promise((resolve) => {
-        const close = (value) => {
-            overlay.classList.add('hidden');
-            okBtn.onclick = null;
-            cancelBtn.onclick = null;
-            document.onkeydown = null;
-            resolve(value);
-        };
-
-        okBtn.onclick = () => close(true);
-        cancelBtn.onclick = () => close(false);
-        
-        document.onkeydown = (e) => {
+        const handleKeyDown = (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 okBtn.click();
@@ -147,6 +136,19 @@ export function showConfirmationPrompt(title, htmlContent, confirmText = 'Confir
                 cancelBtn.click();
             }
         };
+
+        const close = (value) => {
+            overlay.classList.add('hidden');
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            document.removeEventListener('keydown', handleKeyDown);
+            resolve(value);
+        };
+
+        okBtn.onclick = () => close(true);
+        cancelBtn.onclick = () => close(false);
+        
+        document.addEventListener('keydown', handleKeyDown);
     });
 }
 
@@ -177,22 +179,24 @@ export function showAlert(title, htmlContent) {
     okBtn.focus();
 
     return new Promise((resolve) => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Enter' || e.key === 'Escape') {
+                e.preventDefault();
+                okBtn.click();
+            }
+        };
+
         const close = () => {
             overlay.classList.add('hidden');
             okBtn.onclick = null;
-            document.onkeydown = null;
+            document.removeEventListener('keydown', handleKeyDown);
             cancelBtn.style.display = 'block'; // Restore for next use
             resolve();
         };
 
         okBtn.onclick = close;
         
-        document.onkeydown = (e) => {
-            if (e.key === 'Enter' || e.key === 'Escape') {
-                e.preventDefault();
-                okBtn.click();
-            }
-        };
+        document.addEventListener('keydown', handleKeyDown);
     });
 }
 
