@@ -5,14 +5,18 @@ import { resetUnreadMessages } from '../notifications.js';
 
 let selfId = null;
 let subscriptions = [];
+let knownPeerIds = new Set();
 
 function renderPlayerList(peers) {
   const playerListEl = document.getElementById('player-list');
   if (!playerListEl) return;
 
+  const newPeerIds = new Set(peers?.map(p => p.id) || []);
+
   playerListEl.innerHTML = '';
   if (!peers || peers.length === 0) {
     playerListEl.innerHTML = '<p class="no-mods">No other players found.</p>';
+    knownPeerIds = new Set();
     return;
   }
   
@@ -26,6 +30,12 @@ function renderPlayerList(peers) {
   peers.forEach(peer => {
     const playerEl = document.createElement('div');
     playerEl.className = 'player-item';
+    
+    // Add animation class for new peers
+    if (!knownPeerIds.has(peer.id)) {
+        playerEl.classList.add('new');
+    }
+    
     if (peer.id === selfId) playerEl.classList.add('is-self');
     playerEl.innerHTML = `
       <div class="status-dot online"></div>
@@ -36,6 +46,8 @@ function renderPlayerList(peers) {
     `;
     playerListEl.appendChild(playerEl);
   });
+
+  knownPeerIds = newPeerIds;
 }
 
 function appendChatMessage(message) {
@@ -122,4 +134,5 @@ export async function init() {
 export function unmount() {
     subscriptions.forEach(unsubscribe => unsubscribe());
     subscriptions = [];
+    knownPeerIds = new Set();
 }

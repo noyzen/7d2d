@@ -76,7 +76,7 @@
 .go-to-chat-btn:hover { background-color: rgba(0, 255, 127, 0.15); border-color: var(--primary); color: var(--primary); }
 .home-player-list { 
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 12px;
 }
 .home-player-item {
@@ -85,10 +85,16 @@
     border-radius: 6px;
     border: 1px solid var(--border-glass);
     display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.home-player-name-container {
+    display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 .home-player-name { font-weight: bold; color: var(--fg-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.home-player-ip { font-size: 0.8rem; color: var(--fg-med); }
+.home-player-os-name { font-size: 0.8rem; color: var(--fg-med); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .home-player-item.is-self .home-player-name { color: var(--primary); }
 
 
@@ -199,3 +205,19 @@
 .about-info-item p, .about-info-item a { font-weight: bold; font-size: 1.1rem; color: var(--fg-light); }
 .about-info-item a { color: var(--primary); }
 .about-info-item a:hover { color: var(--primary-hover); text-decoration: underline; }
+
+/* --- PLAYER APPEAR ANIMATION --- */
+@keyframes player-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.85) translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+  }
+}
+
+.player-item.new, .home-player-item.new {
+  animation: player-appear 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}

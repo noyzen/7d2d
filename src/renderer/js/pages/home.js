@@ -4,6 +4,7 @@ import { rendererEvents } from '../events.js';
 let selfId = null;
 let firewallCheckInterval = null;
 let subscriptions = [];
+let knownPeerIds = new Set();
 
 // --- HELPERS ---
 function getEl(id) { return document.getElementById(id); }
@@ -60,6 +61,8 @@ async function displayFirewallStatus() {
 function renderHomePageLanStatus(peers) {
   const homeLanStatus = getEl('home-lan-status');
   if (!homeLanStatus) return;
+  
+  const newPeerIds = new Set(peers?.map(p => p.id) || []);
 
   if (peers && peers.length > 0) {
     homeLanStatus.classList.remove('hidden');
@@ -67,19 +70,36 @@ function renderHomePageLanStatus(peers) {
     const homePlayerList = getEl('home-player-list');
     homePlayerList.innerHTML = '';
     peers
-      .sort((a,b) => a.name.localeCompare(b.name))
+      .sort((a,b) => {
+        if (a.id === selfId) return -1;
+        if (b.id === selfId) return 1;
+        return a.name.localeCompare(b.name);
+      })
       .forEach(peer => {
         const peerEl = document.createElement('div');
         peerEl.className = 'home-player-item';
-        peerEl.innerHTML = `<span class="home-player-name">${peer.name}</span><span class="home-player-ip">${peer.address || '...'}</span>`;
+        
+        if (!knownPeerIds.has(peer.id)) {
+            peerEl.classList.add('new');
+        }
+
+        peerEl.innerHTML = `
+            <div class="status-dot online"></div>
+            <div class="home-player-name-container">
+                <span class="home-player-name">${peer.name}</span>
+                <span class="home-player-os-name">${peer.osUsername || ''} - ${peer.address || '...'}</span>
+            </div>
+        `;
         if (peer.id === selfId) {
           peerEl.classList.add('is-self');
           peerEl.querySelector('.home-player-name').textContent += ' (You)';
         }
         homePlayerList.appendChild(peerEl);
     });
+    knownPeerIds = newPeerIds;
   } else {
     homeLanStatus.classList.add('hidden');
+    knownPeerIds = new Set();
   }
 }
 
@@ -180,4 +200,5 @@ export function unmount() {
     clearInterval(firewallCheckInterval);
     subscriptions.forEach(unsubscribe => unsubscribe());
     subscriptions = [];
+    knownPeerIds = new Set();
 }

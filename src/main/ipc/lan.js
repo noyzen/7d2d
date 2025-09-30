@@ -216,8 +216,13 @@ function handleStartDiscovery() {
     lanSocket.bind(LAN_PORT, () => {
       lanSocket.setBroadcast(true);
       console.log(`LAN socket bound to port ${LAN_PORT}. Starting discovery...`);
+      
+      // Send a burst of heartbeats on startup for more reliable initial discovery.
+      setTimeout(() => broadcastPacket('heartbeat'), 100);
+      setTimeout(() => broadcastPacket('heartbeat'), 500);
+      setTimeout(() => broadcastPacket('heartbeat'), 1500);
+
       broadcastInterval = setInterval(() => broadcastPacket('heartbeat'), BROADCAST_INTERVAL);
-      broadcastPacket('heartbeat');
       peerCheckInterval = setInterval(checkPeers, BROADCAST_INTERVAL);
     });
   });
