@@ -1,0 +1,68 @@
+<div class="page active" id="page-settings">
+    <div class="page-header">
+      <h1>Settings</h1>
+      <p>Configure your launcher experience.</p>
+    </div>
+    <div class="settings-container">
+      <div class="setting-item">
+        <div class="setting-label">
+          <h3>Background Music</h3>
+          <p>Play music when the launcher starts.</p>
+        </div>
+        <div class="setting-control">
+          <label class="switch">
+            <input type="checkbox" id="setting-music-toggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="setting-item">
+        <div class="setting-label">
+          <h3>Exit on Game Start</h3>
+          <p>Close the launcher completely when the game is launched.</p>
+        </div>
+        <div class="setting-control">
+          <label class="switch">
+            <input type="checkbox" id="setting-exit-toggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="page-section-divider"></div>
+        <div class="data-management-container">
+          <div class="setting-label" style="margin-bottom: 20px;">
+              <h3>Game Data Management</h3>
+              <p>Backup or restore your game save data (worlds, player profiles) and registry settings.</p>
+          </div>
+
+          <div id="backup-status-container" class="backup-status-container"></div>
+
+          <div id="backup-controls" class="backup-controls">
+              <button id="backup-btn" class="backup-action-btn"><i class="fa-solid fa-folder-open"></i> Backup Files</button>
+              <button id="restore-btn" class="backup-action-btn restore"><i class="fa-solid fa-folder-tree"></i> Restore Files</button>
+          </div>
+
+          <div id="backup-progress-container" class="backup-progress-container hidden">
+              <div class="progress-info">
+                  <span id="progress-label">Backing up...</span>
+                  <span id="progress-percentage">0%</span>
+              </div>
+              <div class="progress-bar-outer">
+                  <div id="progress-bar-inner" class="progress-bar-inner"></div>
+              </div>
+              <div id="progress-details" class="progress-details">Initializing...</div>
+          </div>
+          
+          <div id="registry-backup-wrapper" style="display: none;">
+            <div class="sub-section-divider"></div>
+            <div class="backup-controls">
+              <button id="backup-registry-btn" class="backup-action-btn"><i class="fa-solid fa-book"></i> Backup Registry</button>
+              <button id="restore-registry-btn" class="backup-action-btn restore"><i class="fa-solid fa-book-medical"></i> Restore Registry</button>
+            </div>
+          </div>
+
+          <div id="backup-result-message" class="backup-result-message"></div>
+      </div>
+    </div>
+</div>

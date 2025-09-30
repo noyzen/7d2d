@@ -7,14 +7,13 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: file:; font-src 'self' data: https://fonts.gstatic.com; script-src 'self'; media-src 'self' file:;" />
   <title>7D2D Launcher</title>
   <link rel="stylesheet" href="../../fonts/all.min.css" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/pages.css" />
 </head>
 <body>
-  <div class="window-border"></div>
-
   <div id="titlebar">
     <div class="drag-region">
-      <div class="window-title" id="window-title">7D2D Launcher</div>
+      <div class="window-title">7D2D Launcher</div>
     </div>
     <div class="window-controls">
       <button id="min-btn" title="Minimize" aria-label="Minimize"><i class="fa-solid fa-window-minimize"></i></button>
@@ -27,28 +26,28 @@
     <aside class="sidebar">
       <div class="sidebar-logo" id="sidebar-logo">7D2D</div>
       <nav class="sidebar-nav">
-        <button class="nav-button active" data-page="page-home" aria-label="Home">
+        <button class="nav-button active" data-page="home" aria-label="Home">
           <i class="fa-solid fa-house-chimney"></i>
           <span>Home</span>
         </button>
-        <button class="nav-button" data-page="page-chat" aria-label="Chat">
+        <button class="nav-button" data-page="chat" aria-label="Chat">
           <i class="fa-solid fa-comments"></i>
           <span>Chat</span>
           <span class="notification-badge" id="chat-notification-badge"></span>
         </button>
-        <button class="nav-button" data-page="page-mods" aria-label="Mods">
+        <button class="nav-button" data-page="mods" aria-label="Mods">
           <i class="fa-solid fa-puzzle-piece"></i>
           <span>Mods</span>
         </button>
-        <button class="nav-button" data-page="page-settings" aria-label="Settings">
+        <button class="nav-button" data-page="settings" aria-label="Settings">
           <i class="fa-solid fa-gear"></i>
           <span>Settings</span>
         </button>
-        <button class="nav-button" data-page="page-about" aria-label="About">
+        <button class="nav-button" data-page="about" aria-label="About">
           <i class="fa-solid fa-circle-info"></i>
           <span>About</span>
         </button>
-        <button class="nav-button" data-page="page-developer" id="developer-nav-btn" aria-label="Developer" style="display: none;">
+        <button class="nav-button" data-page="developer" id="developer-nav-btn" aria-label="Developer" style="display: none;">
           <i class="fa-solid fa-file-code"></i>
           <span>Developer</span>
         </button>
@@ -56,266 +55,11 @@
     </aside>
 
     <main class="content-area">
-      <!-- Home Page -->
-      <div class="page active" id="page-home">
-        <div class="home-content">
-          <h1>Welcome Back, Survivor</h1>
-          <p>Your wasteland adventure awaits. Manage your mods, tweak settings, and dive back into the apocalypse.</p>
-          <div id="player-name-wrapper" class="player-name-wrapper">
-              <span id="player-name-display">Survivor</span>
-              <input type="text" id="player-name-input" class="hidden">
-              <button id="edit-player-name-btn" title="Edit Player Name"><i class="fa-solid fa-pencil"></i></button>
-          </div>
-          <button id="start-game-btn" class="start-button">
-            <i class="fa-solid fa-play"></i>
-            <span>START GAME</span>
-          </button>
-          <div id="start-game-error" class="error-message"></div>
-          
-          <div class="home-stats-container">
-            <div class="stat-card">
-              <h3>Active Mods</h3>
-              <p id="active-mods-count">0</p>
-            </div>
-          </div>
-
-          <div id="home-lan-status" class="home-lan-status hidden">
-            <div class="lan-status-header">
-              <h3>Players on LAN (<span id="lan-player-count">0</span>)</h3>
-              <button id="go-to-chat-btn" class="go-to-chat-btn">Open Chat <i class="fa-solid fa-arrow-right"></i></button>
-            </div>
-            <div id="home-player-list" class="home-player-list">
-              <!-- Player names will be inserted here -->
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Chat Page -->
-      <div class="page" id="page-chat">
-        <div class="chat-layout">
-          <aside class="chat-sidebar">
-            <div class="page-header" style="padding: 0; border: none;">
-                <h2>Players on LAN</h2>
-                <p>Users running the launcher.</p>
-            </div>
-            <div id="player-list" class="player-list">
-              <!-- Player items will be inserted here -->
-            </div>
-          </aside>
-          <main class="chat-main">
-            <div id="chat-messages" class="chat-messages">
-              <div class="chat-notice">
-                Welcome to the LAN chat! Messages are not saved and will disappear when you close the launcher.
-              </div>
-            </div>
-            <form id="chat-form" class="chat-form" aria-label="Chat Message Form">
-              <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off" aria-label="Message Input">
-              <button type="submit" id="chat-send-btn" aria-label="Send Message"><i class="fa-solid fa-paper-plane"></i></button>
-            </form>
-          </main>
-        </div>
-      </div>
-
-      <!-- Mods Page -->
-      <div class="page" id="page-mods">
-        <div class="page-header">
-          <h1>Mod Manager</h1>
-          <p>Enable or disable mods by toggling the switch.</p>
-        </div>
-        <div class="mod-lists">
-          <div class="mod-list-container">
-            <h2><i class="fa-solid fa-check-circle"></i> Enabled Mods</h2>
-            <div id="enabled-mods-list" class="mod-list"></div>
-          </div>
-          <div class="mod-list-container">
-            <h2><i class="fa-solid fa-times-circle"></i> Disabled Mods</h2>
-            <div id="disabled-mods-list" class="mod-list"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Settings Page -->
-      <div class="page" id="page-settings">
-        <div class="page-header">
-          <h1>Settings</h1>
-          <p>Configure your launcher experience.</p>
-        </div>
-        <div class="settings-container">
-          <div class="setting-item">
-            <div class="setting-label">
-              <h3>Background Music</h3>
-              <p>Play music when the launcher starts.</p>
-            </div>
-            <div class="setting-control">
-              <label class="switch">
-                <input type="checkbox" id="setting-music-toggle">
-                <span class="slider"></span>
-              </label>
-            </div>
-          </div>
-          <div class="setting-item">
-            <div class="setting-label">
-              <h3>Exit on Game Start</h3>
-              <p>Close the launcher completely when the game is launched.</p>
-            </div>
-            <div class="setting-control">
-              <label class="switch">
-                <input type="checkbox" id="setting-exit-toggle">
-                <span class="slider"></span>
-              </label>
-            </div>
-          </div>
-
-          <div class="page-section-divider"></div>
-            <div class="data-management-container">
-              <div class="setting-label" style="margin-bottom: 20px;">
-                  <h3>Game Data Management</h3>
-                  <p>Backup or restore your game save data (worlds, player profiles) and registry settings.</p>
-              </div>
-
-              <div id="backup-status-container" class="backup-status-container">
-                  <!-- Status info will be injected here by JS -->
-              </div>
-
-              <div id="backup-controls" class="backup-controls">
-                  <button id="backup-btn" class="backup-action-btn">
-                      <i class="fa-solid fa-folder-open"></i> Backup Files
-                  </button>
-                  <button id="restore-btn" class="backup-action-btn restore">
-                      <i class="fa-solid fa-folder-tree"></i> Restore Files
-                  </button>
-              </div>
-
-              <div id="backup-progress-container" class="backup-progress-container hidden">
-                  <div class="progress-info">
-                      <span id="progress-label">Backing up...</span>
-                      <span id="progress-percentage">0%</span>
-                  </div>
-                  <div class="progress-bar-outer">
-                      <div id="progress-bar-inner" class="progress-bar-inner"></div>
-                  </div>
-                  <div id="progress-details" class="progress-details">
-                      Initializing...
-                  </div>
-              </div>
-              
-              <div id="registry-backup-wrapper" style="display: none;">
-                <div class="sub-section-divider"></div>
-                <div class="backup-controls">
-                  <button id="backup-registry-btn" class="backup-action-btn">
-                    <i class="fa-solid fa-book"></i> Backup Registry
-                  </button>
-                  <button id="restore-registry-btn" class="backup-action-btn restore">
-                    <i class="fa-solid fa-book-medical"></i> Restore Registry
-                  </button>
-                </div>
-              </div>
-
-              <div id="backup-result-message" class="backup-result-message"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- About Page -->
-      <div class="page" id="page-about">
-        <div class="about-content">
-          <h1 id="about-title"></h1>
-          <p id="about-description"></p>
-          <div class="about-info-grid">
-            <div class="about-info-item">
-              <span>Creator</span>
-              <p id="about-creator"></p>
-            </div>
-            <div class="about-info-item">
-              <span>Version</span>
-              <p id="about-version"></p>
-            </div>
-            <div class="about-info-item">
-              <span>Website</span>
-              <a id="about-website" href="#" target="_blank"></a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Developer Page -->
-      <div class="page" id="page-developer">
-        <div class="page-header">
-          <h1>Developer Tools</h1>
-          <p>Advanced tools for configuring game files and registry entries.</p>
-        </div>
-        
-        <div class="page-header" style="margin-top: 10px; border-top: none; padding-bottom: 5px;">
-            <h2>Player Name Config Editor</h2>
-            <p>Define files and lines to update with your player name when the game starts.</p>
-        </div>
-        <div class="config-editor-container">
-            <div id="config-rules-list">
-                <!-- Rules will be dynamically inserted here -->
-            </div>
-            <button id="add-config-rule-btn" class="add-rule-button">
-                <i class="fa-solid fa-plus"></i>
-                <span>Add New Rule</span>
-            </button>
-        </div>
-
-        <div id="registry-editor-wrapper" class="page-section-divider">
-          <div class="page-header" style="border-top: none; padding-top: 0; padding-bottom: 5px;">
-              <h2>Registry Key Editor</h2>
-              <p>Define registry keys to update with your player name. (Windows Only)</p>
-          </div>
-          <div class="registry-editor-container">
-              <div id="registry-rules-list">
-                  <!-- Registry rules will be dynamically inserted here -->
-              </div>
-              <button id="add-registry-rule-btn" class="add-rule-button">
-                  <i class="fa-solid fa-plus"></i>
-                  <span>Add New Registry Rule</span>
-              </button>
-          </div>
-        </div>
-        
-        <div class="page-section-divider">
-          <div class="page-header" style="border-top: none; padding-top: 0; padding-bottom: 5px;">
-            <h2>About Page Editor</h2>
-            <p>Customize the content displayed on the 'About' page.</p>
-          </div>
-          <div id="about-page-editor" class="about-page-editor">
-            <div class="config-field">
-                <label for="about-editor-title">Page Title</label>
-                <input type="text" id="about-editor-title">
-            </div>
-            <div class="config-field">
-                <label for="about-editor-creator">Creator Name</label>
-                <input type="text" id="about-editor-creator">
-            </div>
-            <div class="config-field">
-                <label for="about-editor-website">Website URL</label>
-                <input type="text" id="about-editor-website">
-            </div>
-            <div class="config-field">
-                <label for="about-editor-description">Description</label>
-                <textarea id="about-editor-description" rows="5"></textarea>
-            </div>
-          </div>
-        </div>
-        
-        <div class="page-section-divider">
-          <div class="page-header" style="border-top: none; padding-top: 0; padding-bottom: 5px;">
-            <h2>Launch Parameters</h2>
-            <p>Configure command-line arguments for launching the game.</p>
-          </div>
-          <div id="launch-params-container" class="launch-params-container">
-            <!-- Launch parameters will be dynamically inserted here -->
-          </div>
-        </div>
-
-      </div>
+      <!-- Page content will be loaded here -->
     </main>
   </div>
 
-  <div id="error-overlay">
+  <div id="error-overlay" style="display: none;">
     <div class="error-card">
       <i class="fa-solid fa-triangle-exclamation"></i>
       <h2>Launcher Setup Error</h2>
@@ -325,6 +69,6 @@
 
   <audio id="bgm" loop></audio>
 
-  <script src="renderer.js"></script>
+  <script src="js/main.js" type="module"></script>
 </body>
 </html>

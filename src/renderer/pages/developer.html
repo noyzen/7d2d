@@ -1,0 +1,65 @@
+<div class="page active" id="page-developer">
+    <div class="page-header">
+      <h1>Developer Tools</h1>
+      <p>Advanced tools for configuring game files and registry entries.</p>
+    </div>
+    
+    <div class="page-header" style="margin-top: 10px; border-top: none; padding-bottom: 5px;">
+        <h2>Player Name Config Editor</h2>
+        <p>Define files and lines to update with your player name when the game starts.</p>
+    </div>
+    <div class="config-editor-container">
+        <div id="config-rules-list"></div>
+        <button id="add-config-rule-btn" class="add-rule-button">
+            <i class="fa-solid fa-plus"></i>
+            <span>Add New Rule</span>
+        </button>
+    </div>
+
+    <div id="registry-editor-wrapper" class="page-section-divider">
+      <div class="page-header" style="border-top: none; padding-top: 0; padding-bottom: 5px;">
+          <h2>Registry Key Editor</h2>
+          <p>Define registry keys to update with your player name. (Windows Only)</p>
+      </div>
+      <div class="registry-editor-container">
+          <div id="registry-rules-list"></div>
+          <button id="add-registry-rule-btn" class="add-rule-button">
+              <i class="fa-solid fa-plus"></i>
+              <span>Add New Registry Rule</span>
+          </button>
+      </div>
+    </div>
+    
+    <div class="page-section-divider">
+      <div class="page-header" style="border-top: none; padding-top: 0; padding-bottom: 5px;">
+        <h2>About Page Editor</h2>
+        <p>Customize the content displayed on the 'About' page.</p>
+      </div>
+      <div id="about-page-editor" class="about-page-editor">
+        <div class="config-field">
+            <label for="about-editor-title">Page Title</label>
+            <input type="text" id="about-editor-title">
+        </div>
+        <div class="config-field">
+            <label for="about-editor-creator">Creator Name</label>
+            <input type="text" id="about-editor-creator">
+        </div>
+        <div class="config-field">
+            <label for="about-editor-website">Website URL</label>
+            <input type="text" id="about-editor-website">
+        </div>
+        <div class="config-field">
+            <label for="about-editor-description">Description</label>
+            <textarea id="about-editor-description" rows="5"></textarea>
+        </div>
+      </div>
+    </div>
+    
+    <div class="page-section-divider">
+      <div class="page-header" style="border-top: none; padding-top: 0; padding-bottom: 5px;">
+        <h2>Launch Parameters</h2>
+        <p>Configure command-line arguments for launching the game.</p>
+      </div>
+      <div id="launch-params-container" class="launch-params-container"></div>
+    </div>
+</div>
