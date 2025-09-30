@@ -7,6 +7,26 @@ let selfId = null;
 let subscriptions = [];
 let knownPeerIds = new Set();
 
+async function checkAndDisplayFirewallWarning() {
+    const container = document.getElementById('firewall-warning-container');
+    if (!container || window.appInfo.platform !== 'win32') return;
+
+    const result = await window.launcher.getFirewallStatus();
+    if (result.status === 'ON') {
+        container.innerHTML = `
+            <div class="firewall-warning">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <p>
+                    <strong>Firewall Active:</strong> LAN features like player discovery and chat may not work correctly.
+                    Please ensure this application is allowed through your firewall for private networks.
+                </p>
+            </div>
+        `;
+    } else {
+        container.innerHTML = '';
+    }
+}
+
 function renderPlayerList(peers) {
   const playerListEl = document.getElementById('player-list');
   if (!playerListEl) return;
@@ -105,6 +125,7 @@ function setupEventListeners() {
 
 export async function init() {
     resetUnreadMessages();
+    checkAndDisplayFirewallWarning();
     setupEventListeners();
 
     const chatMessagesEl = document.getElementById('chat-messages');

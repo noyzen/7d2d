@@ -9,6 +9,26 @@ let knownPeerIds = new Set();
 // --- HELPERS ---
 function getEl(id) { return document.getElementById(id); }
 
+async function checkAndDisplayFirewallWarning() {
+    const container = document.getElementById('firewall-warning-container');
+    if (!container || window.appInfo.platform !== 'win32') return;
+
+    const result = await window.launcher.getFirewallStatus();
+    if (result.status === 'ON') {
+        container.innerHTML = `
+            <div class="firewall-warning">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <p>
+                    <strong>Firewall Active:</strong> LAN features like player discovery and chat may not work correctly.
+                    Please ensure this application is allowed through your firewall for private networks.
+                </p>
+            </div>
+        `;
+    } else {
+        container.innerHTML = '';
+    }
+}
+
 function updatePlayerNameVisibility() {
     const wrapper = getEl('player-name-wrapper');
     if (!wrapper) return;
@@ -187,6 +207,7 @@ export function init() {
     
     updatePlayerNameVisibility();
     updateHomePageStats();
+    checkAndDisplayFirewallWarning();
     displayFirewallStatus();
     firewallCheckInterval = setInterval(displayFirewallStatus, 15000); // Check every 15s
     

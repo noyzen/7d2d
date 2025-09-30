@@ -16,6 +16,7 @@ const {
 let mainWindow;
 let lanSocket = null;
 let localIpAddress = null;
+let broadcastAddress = BROADCAST_ADDR; // Default to 255.255.255.255
 let broadcastInterval = null;
 let peerCheckInterval = null;
 let peers = new Map();
@@ -32,7 +33,7 @@ const CHAT_HISTORY_PATH = path.join(LAUNCHER_FILES_PATH, 'chathistory.json');
  * (e.g., 192.168.x.x) and should prioritize physical adapters (Ethernet, Wi-Fi) over
  * virtual ones (VPNs, etc.). DO NOT change this to detect public/remote IP addresses.
  */
-function getLocalIp() {
+function getLanInterfaceDetails() {
     const interfaces = os.networkInterfaces();
     const candidates = [];
 
@@ -57,7 +58,7 @@ function getLocalIp() {
                     } else {
                         score = 10; // Low score for other interfaces (e.g., virtual, VPN)
                     }
-                    candidates.push({ address: net.address, score: score });
+                    candidates.push({ address: net.address, netmask: net.netmask, score: score });
                 }
             }
         }
@@ -65,15 +66,25 @@ function getLocalIp() {
 
     // If no candidates were found, return null
     if (candidates.length === 0) {
-        return null;
+        return { ip: null, broadcast: BROADCAST_ADDR };
     }
 
     // Sort by score descending to get the best candidate first
     candidates.sort((a, b) => b.score - a.score);
-
-    // Return the address of the highest-scored interface
-    console.log(`Found LAN IP candidates: ${JSON.stringify(candidates)}. Selected: ${candidates[0].address}`);
-    return candidates[0].address;
+    const bestCandidate = candidates[0];
+    
+    // Calculate subnet-specific broadcast address for better reliability
+    try {
+        const ipParts = bestCandidate.address.split('.').map(Number);
+        const netmaskParts = bestCandidate.netmask.split('.').map(Number);
+        const broadcastParts = ipParts.map((part, i) => part | (255 - netmaskParts[i]));
+        const calculatedBroadcast = broadcastParts.join('.');
+        console.log(`Selected LAN interface: ${bestCandidate.address}. Using broadcast address: ${calculatedBroadcast}`);
+        return { ip: bestCandidate.address, broadcast: calculatedBroadcast };
+    } catch (e) {
+        console.error("Failed to calculate broadcast address, falling back to default.", e);
+        return { ip: bestCandidate.address, broadcast: BROADCAST_ADDR };
+    }
 }
 
 function loadChatHistory() {
@@ -130,8 +141,8 @@ function broadcastPacket(type, payload) {
     osUsername: OS_USERNAME,
     ...payload
   }));
-  lanSocket.send(message, 0, message.length, LAN_PORT, BROADCAST_ADDR, (err) => {
-    if (err) console.error('Broadcast error:', err);
+  lanSocket.send(message, 0, message.length, LAN_PORT, broadcastAddress, (err) => {
+    if (err) console.error(`Broadcast error to ${broadcastAddress}:`, err);
   });
 }
 
@@ -167,7 +178,10 @@ function handleStartDiscovery() {
       return;
     }
     
-    localIpAddress = getLocalIp();
+    const networkDetails = getLanInterfaceDetails();
+    localIpAddress = networkDetails.ip;
+    broadcastAddress = networkDetails.broadcast;
+
     if (!localIpAddress) {
       console.warn('No suitable private LAN interface found. LAN discovery will not start.');
       return;
