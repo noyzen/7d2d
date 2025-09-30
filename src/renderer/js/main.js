@@ -114,7 +114,12 @@ function setupGlobalEventListeners() {
     window.transfer.onProgress((progress) => {
         document.getElementById('transfer-progress-bar-inner').style.width = `${progress.totalSize > 0 ? (progress.downloadedSize / progress.totalSize) * 100 : 0}%`;
         document.getElementById('transfer-progress-percentage').textContent = `${progress.totalSize > 0 ? Math.round((progress.downloadedSize / progress.totalSize) * 100) : 0}%`;
-        document.getElementById('transfer-progress-details').textContent = `(${progress.filesDone}/${progress.totalFiles}) ${progress.currentFile}`;
+        
+        const detailsEl = document.getElementById('transfer-progress-details');
+        const progressText = `(${progress.filesDone}/${progress.totalFiles}) ${progress.currentFile}`;
+        detailsEl.textContent = progressText;
+        detailsEl.title = progressText; // Add tooltip for long file names
+        
         document.getElementById('transfer-progress-speed').textContent = `${formatBytes(progress.speed)}/s`;
     });
 
@@ -124,11 +129,7 @@ function setupGlobalEventListeners() {
         
         if (result.success) {
             completeMessageEl.className = 'backup-result-message success';
-            if (result.type === 'launcher') {
-                completeMessageEl.textContent = 'Launcher files updated successfully!';
-            } else { // 'full'
-                completeMessageEl.textContent = 'Game download complete! You can now close this window.';
-            }
+            completeMessageEl.textContent = 'Game download complete! You can now close this window.';
             document.getElementById('transfer-close-btn').classList.remove('hidden');
         } else {
             completeMessageEl.textContent = `Download failed: ${result.error}`;
