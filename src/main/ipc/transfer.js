@@ -43,12 +43,14 @@ function broadcastDownloadersUpdate() {
         }
     }
     
-    const downloadersList = Array.from(activeDownloaders.values());
-    mainWindow?.webContents.send('transfer:active-downloads-update', downloadersList);
+    // SAFEGUARD: On shutdown, mainWindow might be destroyed.
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        const downloadersList = Array.from(activeDownloaders.values());
+        mainWindow.webContents.send('transfer:active-downloads-update', downloadersList);
 
-    if (changed && activeDownloaders.size === 0) {
-        // If the last downloader was just removed, send one more update.
-        mainWindow?.webContents.send('transfer:active-downloads-update', []);
+        if (changed && activeDownloaders.size === 0) {
+            mainWindow.webContents.send('transfer:active-downloads-update', []);
+        }
     }
 }
 
@@ -277,43 +279,68 @@ function handleDownloadGame() {
                     }
                 } else {
                     await fs.promises.mkdir(path.dirname(localPath), { recursive: true });
-                    const fileStream = fs.createWriteStream(localPath);
-                    const fileUrl = `http://${host.address}:${host.sharePort}/get-file?path=${encodeURIComponent(file.path)}`;
                     
                     await new Promise((resolve, reject) => {
-                        const req = http.get(fileUrl, res => {
+                        if (currentDownload.isCancelled) return reject(new Error('cancelled'));
+                        
+                        const fileStream = fs.createWriteStream(localPath);
+                        const fileUrl = `http://${host.address}:${host.sharePort}/get-file?path=${encodeURIComponent(file.path)}`;
+                        
+                        const req = http.get(fileUrl, (res) => {
+                            if (currentDownload.isCancelled) {
+                                req.destroy();
+                                return reject(new Error('cancelled'));
+                            }
                             currentDownload.request = req;
+                            
                             res.on('data', chunk => {
                                 if (currentDownload.isCancelled) {
                                     req.destroy();
-                                    return;
-                                }
-                                downloadedSize += chunk.length;
-                                const now = Date.now();
-                                if (now - lastProgressTime > 250) { // Throttle updates
-                                    const speed = (downloadedSize - lastDownloadedSize) / ((now - lastProgressTime) / 1000);
-                                    lastProgressTime = now;
-                                    lastDownloadedSize = downloadedSize;
-                                    mainWindow?.webContents.send('transfer:progress', {
-                                        totalSize, downloadedSize, totalFiles: filesToDownload.length, filesDone: i,
-                                        currentFile: file.path, speed
-                                    });
-                                }
-                            });
-                            res.pipe(fileStream);
-                            fileStream.on('finish', () => {
-                                currentDownload.request = null;
-                                if (currentDownload.isCancelled) {
-                                    reject(new Error('cancelled'));
                                 } else {
-                                    resolve();
+                                    downloadedSize += chunk.length;
+                                    const now = Date.now();
+                                    if (now - lastProgressTime > 250) { // Throttle UI updates
+                                        const speed = (downloadedSize - lastDownloadedSize) / ((now - lastProgressTime) / 1000);
+                                        lastProgressTime = now;
+                                        lastDownloadedSize = downloadedSize;
+                                        if (mainWindow && !mainWindow.isDestroyed()) {
+                                            mainWindow.webContents.send('transfer:progress', {
+                                                totalSize, downloadedSize, totalFiles: filesToDownload.length, filesDone: i,
+                                                currentFile: file.path, speed
+                                            });
+                                        }
+                                    }
                                 }
                             });
+                            
+                            res.pipe(fileStream);
+                            
+                            fileStream.on('finish', () => {
+                                fileStream.close(() => {
+                                    currentDownload.request = null;
+                                    if (currentDownload.isCancelled) {
+                                        reject(new Error('cancelled'));
+                                    } else {
+                                        resolve();
+                                    }
+                                });
+                            });
+                            
                             fileStream.on('error', (err) => {
+                                currentDownload.request = null;
+                                req.destroy();
                                 if (err.code === 'EPERM') return reject(new Error('requires-admin'));
                                 reject(err);
                             });
-                        }).on('error', reject);
+                        });
+                        
+                        req.on('error', (err) => {
+                            currentDownload.request = null;
+                            if (fileStream.writable && !fileStream.closed) {
+                                fileStream.close();
+                            }
+                            reject(new Error('cancelled'));
+                        });
                     });
                 }
             }
