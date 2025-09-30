@@ -54,14 +54,24 @@ function createModElement(mod) {
     if (modEl.classList.contains('processing')) return;
     modEl.classList.add('processing');
 
-    const result = await window.mods.toggle({ folderName: mod.folderName, enable: !mod.isEnabled });
-    if (!result.success) {
+    const desiredState = !mod.isEnabled;
+    const result = await window.mods.toggle({ folderName: mod.folderName, enable: desiredState });
+
+    if (result.success) {
+      // Update local state without full reload
+      mod.isEnabled = desiredState;
+      modEl.classList.toggle('enabled', desiredState);
+      
+      // Recalculate counts and update UI components that depend on mod state
+      const enabledCount = allMods.filter(m => m.isEnabled).length;
+      const disabledCount = allMods.length - enabledCount;
+      renderModCounts(enabledCount, disabledCount);
+      renderModSetActions(); // Update "Apply Set" button state
+      
+      rendererEvents.emit('mods:changed');
+    } else {
       alert(`Error toggling mod: ${result.error}`);
     }
-    
-    // Forcing a full reload is the simplest way to ensure UI is consistent after any operation
-    await loadMods(); 
-    rendererEvents.emit('mods:changed');
     
     modEl.classList.remove('processing');
   });
