@@ -1,6 +1,6 @@
 import { settings, saveSettings } from '../state.js';
 import { rendererEvents } from '../events.js';
-import { showHostSelectionPrompt } from '../ui.js';
+import { showHostSelectionPrompt, showConfirmationPrompt, sanitizeText } from '../ui.js';
 
 let selfId = null;
 let firewallCheckInterval = null;
@@ -174,11 +174,33 @@ function setupEventListeners() {
         if (!selection) return;
 
         const { host, type } = selection;
-        const confirmMessage = type === 'full'
-            ? 'DANGER!\n\nThis will DELETE ALL existing game files in this folder (except the launcher itself) and replace them with files from the host.\n\nThis action cannot be undone. Are you absolutely sure you want to continue?'
-            : 'This will replace your current `7d2dLauncher.exe` and `LauncherFiles` folder. The launcher will need to restart to apply the changes.\n\nContinue?';
+        const gamePath = await window.launcher.getGamePath();
+        const safeGamePath = sanitizeText(gamePath);
 
-        if (confirm(confirmMessage)) {
+        let title, message;
+        if (type === 'full') {
+            title = 'Confirm Full Game Download';
+            message = `
+                <p><strong>DANGER!</strong></p>
+                <p>This will <strong>DELETE ALL</strong> existing files and folders inside the following directory (except for the launcher itself) and replace them with files from the host.</p>
+                <div class="modal-path-display">${safeGamePath}</div>
+                <p>This action cannot be undone. Are you absolutely sure you want to continue?</p>
+            `;
+        } else {
+            title = 'Confirm Launcher Update';
+            message = `
+                <p>This will replace your current launcher and its support files in the directory:</p>
+                <div class="modal-path-display">${safeGamePath}</div>
+                <p>The launcher will need to restart to apply the changes. Continue?</p>
+            `;
+        }
+
+        const confirmed = await showConfirmationPrompt(title, message, 'Confirm', 'Cancel');
+
+        if (confirmed) {
+            // Pause music to release file lock on bgm.mp3 before deleting/overwriting
+            document.getElementById('bgm').pause();
+
             // Show progress modal
             const overlay = document.getElementById('transfer-progress-overlay');
             document.getElementById('transfer-progress-title').textContent = type === 'full' ? 'Downloading Full Game...' : 'Downloading Launcher Update...';

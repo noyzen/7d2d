@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('launcher', {
   startGame: (settings) => ipcRenderer.invoke('launcher:start-game', settings),
   selectFile: () => ipcRenderer.invoke('launcher:select-file'),
   getFirewallStatus: () => ipcRenderer.invoke('launcher:get-firewall-status'),
+  getGamePath: () => ipcRenderer.invoke('launcher:get-game-path'),
   onGameClosed: (callback) => ipcRenderer.on('game:closed', () => callback()),
 });
 

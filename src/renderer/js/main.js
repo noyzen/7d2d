@@ -121,14 +121,17 @@ function setupGlobalEventListeners() {
     window.transfer.onComplete((result) => {
         const completeMessageEl = document.getElementById('transfer-complete-message');
         document.getElementById('transfer-progress-content').classList.add('hidden');
+        
         if (result.success) {
-            completeMessageEl.textContent = result.type === 'launcher' 
-                ? 'Launcher files downloaded. Restart to apply the update.'
-                : 'Game download complete! You can now close this window.';
             completeMessageEl.className = 'backup-result-message success';
             if (result.type === 'launcher') {
+                completeMessageEl.textContent = 'Launcher files downloaded. Restart to apply the update.';
                 document.getElementById('transfer-restart-btn').classList.remove('hidden');
-            } else {
+            } else if (result.type === 'launcher_manual') {
+                completeMessageEl.textContent = result.message || 'Update downloaded. Please apply manually.';
+                document.getElementById('transfer-close-btn').classList.remove('hidden');
+            } else { // 'full'
+                completeMessageEl.textContent = 'Game download complete! You can now close this window.';
                 document.getElementById('transfer-close-btn').classList.remove('hidden');
             }
         } else {

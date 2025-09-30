@@ -193,19 +193,65 @@ function handleDownloadGame() {
 
             // 4. Handle launcher update
             if (type === 'launcher') {
+                // For non-windows, we can't do a self-update script. We provide manual instructions.
+                if (process.platform !== 'win32') {
+                    const manualUpdatePath = path.join(CWD, 'LauncherUpdate_new');
+                    if (fs.existsSync(manualUpdatePath)) {
+                        await fs.promises.rm(manualUpdatePath, { recursive: true, force: true });
+                    }
+                    await fs.promises.mkdir(manualUpdatePath, { recursive: true });
+                    
+                    await fs.promises.rename(path.join(CWD, '7d2dLauncher.exe' + tempSuffix), path.join(manualUpdatePath, '7d2dLauncher.exe'));
+                    await fs.promises.rename(path.join(CWD, 'LauncherFiles' + tempSuffix), path.join(manualUpdatePath, 'LauncherFiles'));
+
+                    mainWindow?.webContents.send('transfer:complete', { 
+                        success: true, 
+                        type: 'launcher_manual',
+                        message: `Update downloaded to 'LauncherUpdate_new'. Please close the launcher and copy the files over manually.`
+                    });
+                    return { success: true };
+                }
+
+                // Windows-specific self-update script
                 const updateScriptPath = path.join(app.getPath('temp'), '7d2d-launcher-update.bat');
+                const safeCwd = CWD.replace(/"/g, '""');
                 const scriptContent = `
 @echo off
-echo Waiting for launcher to close...
-timeout /t 2 /nobreak > NUL
-echo Replacing files...
-taskkill /IM "7d2dLauncher.exe" /F > NUL
-move /y "${path.join(CWD, '7d2dLauncher.exe' + tempSuffix)}" "${path.join(CWD, '7d2dLauncher.exe')}"
-rmdir /s /q "${path.join(CWD, 'LauncherFiles')}"
-move /y "${path.join(CWD, 'LauncherFiles' + tempSuffix)}" "${path.join(CWD, 'LauncherFiles')}"
-echo Relaunching...
-start "" "${path.join(CWD, '7d2dLauncher.exe')}"
-del "${updateScriptPath}"
+title 7D2D Launcher Updater
+echo.
+echo  Please wait, updating the launcher...
+echo  This window will close automatically.
+echo.
+
+REM Wait for the main process to exit. Ping is a reliable delay.
+ping 127.0.0.1 -n 4 > nul
+
+set "OLD_EXE_PATH=${path.join(safeCwd, '7d2dLauncher.exe')}"
+set "NEW_EXE_PATH=${path.join(safeCwd, '7d2dLauncher.exe' + tempSuffix)}"
+set "OLD_FILES_DIR=${path.join(safeCwd, 'LauncherFiles')}"
+set "NEW_FILES_DIR=${path.join(safeCwd, 'LauncherFiles' + tempSuffix)}"
+
+:retry_move
+REM Try to move the new exe over the old one. This may fail if the file is locked.
+move /Y "%NEW_EXE_PATH%" "%OLD_EXE_PATH%"
+REM Check if the move was successful by seeing if the source file still exists.
+if exist "%NEW_EXE_PATH%" (
+    echo  Launcher executable is still in use, retrying in 2 seconds...
+    ping 127.0.0.1 -n 3 > nul
+    goto retry_move
+)
+
+echo  Executable updated successfully.
+
+echo  Updating launcher assets...
+rmdir /s /q "%OLD_FILES_DIR%"
+move "%NEW_FILES_DIR%" "%OLD_FILES_DIR%"
+
+echo  Update complete. Relaunching launcher...
+start "" "%OLD_EXE_PATH%"
+
+REM Self-destruct the script
+(goto) 2>nul & del "%~f0"
 `;
                 fs.writeFileSync(updateScriptPath, scriptContent);
                 updateInfo = { scriptPath: updateScriptPath };
@@ -223,8 +269,9 @@ del "${updateScriptPath}"
 
 function handleRestartForUpdate() {
     ipcMain.handle('transfer:restart-for-update', () => {
-        if (updateInfo && updateInfo.scriptPath) {
+        if (updateInfo && updateInfo.scriptPath && process.platform === 'win32') {
             try {
+                // Execute the batch script in a new detached process
                 spawn('cmd.exe', ['/c', `start "" "${updateInfo.scriptPath}"`], { detached: true, stdio: 'ignore' }).unref();
                 app.quit();
             } catch (e) {

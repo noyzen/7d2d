@@ -15,6 +15,10 @@ let gameProcess = null;
 
 // --- IPC HANDLERS ---
 
+function handleGetGamePath() {
+    ipcMain.handle('launcher:get-game-path', () => CWD);
+}
+
 function handleGetInitialData() {
   ipcMain.handle('launcher:get-initial-data', () => {
     if (!fs.existsSync(LAUNCHER_FILES_PATH)) {
@@ -250,4 +254,5 @@ exports.init = (mw) => {
   handleStartGame();
   handleSelectFile();
   handleGetFirewallStatus();
+  handleGetGamePath();
 };

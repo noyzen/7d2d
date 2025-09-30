@@ -99,6 +99,58 @@ export function showPrompt(title, text, defaultValue = '') {
     });
 }
 
+/**
+ * Shows a themed confirmation dialog.
+ * @param {string} title - The title for the dialog.
+ * @param {string} htmlContent - The HTML content for the dialog's body.
+ * @param {string} [confirmText='Confirm'] - The text for the confirmation button.
+ * @param {string} [cancelText='Cancel'] - The text for the cancel button.
+ * @returns {Promise<boolean>} A promise that resolves with true if confirmed, false otherwise.
+ */
+export function showConfirmationPrompt(title, htmlContent, confirmText = 'Confirm', cancelText = 'Cancel') {
+    const overlay = document.getElementById('confirmation-overlay');
+    const titleEl = document.getElementById('confirmation-title');
+    const textEl = document.getElementById('confirmation-text');
+    const okBtn = document.getElementById('confirmation-ok-btn');
+    const cancelBtn = document.getElementById('confirmation-cancel-btn');
+
+    if (!overlay || !titleEl || !textEl || !okBtn || !cancelBtn) {
+        return Promise.reject('Confirmation modal elements not found in the DOM.');
+    }
+
+    titleEl.textContent = title;
+    textEl.innerHTML = htmlContent;
+    okBtn.textContent = confirmText;
+    cancelBtn.textContent = cancelText;
+
+    overlay.classList.remove('hidden');
+    okBtn.focus();
+
+    return new Promise((resolve) => {
+        const close = (value) => {
+            overlay.classList.add('hidden');
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            document.onkeydown = null;
+            resolve(value);
+        };
+
+        okBtn.onclick = () => close(true);
+        cancelBtn.onclick = () => close(false);
+        
+        document.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                okBtn.click();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelBtn.click();
+            }
+        };
+    });
+}
+
+
 export function showHostSelectionPrompt(hosts) {
     const overlay = document.getElementById('custom-prompt-overlay');
     const titleEl = document.getElementById('custom-prompt-title');
