@@ -12,7 +12,8 @@ const readModsFromDir = (dirPath) => {
   const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: "",
-    parseAttributeValue: true
+    parseAttributeValue: true,
+    trimValues: true,
   });
 
   return fs.readdirSync(dirPath, { withFileTypes: true })
@@ -32,16 +33,18 @@ const readModsFromDir = (dirPath) => {
         try {
           const xmlContent = fs.readFileSync(xmlPath, 'utf8');
           const parsedData = parser.parse(xmlContent);
-          const modInfo = parsedData.xml?.ModInfo || parsedData.ModInfo;
+          
+          // The root tag is usually <xml> or <ModInfo>. We get the content inside it.
+          const modInfo = parsedData.xml || parsedData.ModInfo;
 
           if (!modInfo) {
-            baseModInfo.description = 'ERROR: Could not find <xml> or <ModInfo> root tag.';
+            baseModInfo.description = 'ERROR: Could not find a valid root tag (<xml> or <ModInfo>).';
             return baseModInfo;
           }
 
           return {
             folderName: dirent.name,
-            name: modInfo.Name?.value || dirent.name,
+            name: modInfo.DisplayName?.value || modInfo.Name?.value || dirent.name,
             description: modInfo.Description?.value || 'No description.',
             author: modInfo.Author?.value || 'Unknown author.',
             version: modInfo.Version?.value || 'N/A',
@@ -74,8 +77,12 @@ function handleGetMods() {
 function handleToggleMod() {
   ipcMain.handle('mods:toggle', async (_, { folderName, enable }) => {
     try {
+      // Ensure both directories exist before trying to move files between them.
+      if (!fs.existsSync(MODS_PATH)) {
+        await fs.promises.mkdir(MODS_PATH, { recursive: true });
+      }
       if (!fs.existsSync(DISABLED_MODS_PATH)) {
-        await fs.promises.mkdir(DISABLED_MODS_PATH);
+        await fs.promises.mkdir(DISABLED_MODS_PATH, { recursive: true });
       }
       const sourcePath = path.join(enable ? DISABLED_MODS_PATH : MODS_PATH, folderName);
       const destPath = path.join(enable ? MODS_PATH : DISABLED_MODS_PATH, folderName);
@@ -102,23 +109,26 @@ function handleApplyModSet() {
             }
             
             const set = new Set(modSetFolderNames);
-            const allMods = [
-                ...fs.readdirSync(MODS_PATH, { withFileTypes: true }).filter(d => d.isDirectory()),
-                ...fs.readdirSync(DISABLED_MODS_PATH, { withFileTypes: true }).filter(d => d.isDirectory())
-            ];
+            const enabledDirs = fs.existsSync(MODS_PATH) ? fs.readdirSync(MODS_PATH, { withFileTypes: true }).filter(d => d.isDirectory()) : [];
+            const disabledDirs = fs.existsSync(DISABLED_MODS_PATH) ? fs.readdirSync(DISABLED_MODS_PATH, { withFileTypes: true }).filter(d => d.isDirectory()) : [];
             
-            for (const mod of allMods) {
-                const shouldBeEnabled = set.has(mod.name);
-                const isCurrentlyEnabled = fs.existsSync(path.join(MODS_PATH, mod.name));
+            const promises = [];
 
-                if (shouldBeEnabled && !isCurrentlyEnabled) {
-                    // Enable it: Move from Disabled to Enabled
-                    await fs.promises.rename(path.join(DISABLED_MODS_PATH, mod.name), path.join(MODS_PATH, mod.name));
-                } else if (!shouldBeEnabled && isCurrentlyEnabled) {
-                    // Disable it: Move from Enabled to Disabled
-                    await fs.promises.rename(path.join(MODS_PATH, mod.name), path.join(DISABLED_MODS_PATH, mod.name));
+            // Disable mods that are currently enabled but shouldn't be
+            for (const mod of enabledDirs) {
+                if (!set.has(mod.name)) {
+                    promises.push(fs.promises.rename(path.join(MODS_PATH, mod.name), path.join(DISABLED_MODS_PATH, mod.name)));
                 }
             }
+
+            // Enable mods that are currently disabled but should be
+            for (const mod of disabledDirs) {
+                if (set.has(mod.name)) {
+                    promises.push(fs.promises.rename(path.join(DISABLED_MODS_PATH, mod.name), path.join(MODS_PATH, mod.name)));
+                }
+            }
+            
+            await Promise.all(promises);
             return { success: true };
         } catch (e) {
             console.error('Failed to apply mod set:', e);
