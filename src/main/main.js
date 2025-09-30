@@ -34,76 +34,78 @@ if (!gotTheLock) {
 }
 
 function createDesktopShortcut() {
-  // This feature is for Windows packaged apps
-  if (process.platform !== 'win32' || !app.isPackaged) {
-      return;
-  }
+  if (process.platform !== 'win32' || !app.isPackaged) return;
 
   try {
     let settings = {};
-    try {
-        if (fs.existsSync(SETTINGS_PATH)) {
-            settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
-        }
-    } catch (e) {
-        console.warn("Could not load settings for shortcut creation. Proceeding with default behavior.", e);
+    if (fs.existsSync(SETTINGS_PATH)) {
+      try {
+        settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
+      } catch (e) {
+        console.warn("Could not load settings for shortcut creation.", e);
+      }
     }
 
     if (settings.createDesktopShortcut === false) {
-        console.log('Desktop shortcut creation is disabled in settings.');
-        return;
+      console.log('Desktop shortcut creation is disabled in settings.');
+      return;
     }
-    
-    const packageJson = require(path.join(app.getAppPath(), 'package.json'));
-    // In packaged apps, electron-builder strips the 'build' property from package.json.
-    // Therefore, appId must be defined explicitly here. It must match the appId in the build config.
-    const appId = 'com.noyzen.7d2dlauncher';
-    // app.name correctly reads productName from the packaged package.json, falling back to name.
-    const productName = app.name;
-    const description = packageJson.description;
 
+    const packageJson = require(path.join(app.getAppPath(), 'package.json'));
+    const appId = 'com.noyzen.7d2dlauncher';
+    const productName = app.name;
     const shortcutPath = path.join(app.getPath('desktop'), `${productName}.lnk`);
     const targetPath = app.getPath('exe');
 
     const shortcutOptions = {
-        target: targetPath,
-        cwd: path.dirname(targetPath),
-        description: description,
-        icon: targetPath,
-        iconIndex: 0,
-        appUserModelId: appId
+      target: targetPath,
+      cwd: path.dirname(targetPath),
+      description: packageJson.description,
+      icon: targetPath,
+      iconIndex: 0,
+      appUserModelId: appId
     };
 
-    // Optimization: Avoid rewriting the shortcut if it already exists and is correct.
-    // This prevents the icon from briefly turning white on every app start.
-    try {
+    let needsAction = false;
+    let operation = 'create';
+
+    if (fs.existsSync(shortcutPath)) {
+      operation = 'update';
+      try {
         const existingShortcut = shell.readShortcutLink(shortcutPath);
-        if (existingShortcut.target === shortcutOptions.target &&
-            existingShortcut.appUserModelId === shortcutOptions.appUserModelId &&
-            existingShortcut.cwd.toLowerCase() === shortcutOptions.cwd.toLowerCase()) {
-            return; // Shortcut is already correct.
+        if (existingShortcut.target !== shortcutOptions.target ||
+            existingShortcut.appUserModelId !== shortcutOptions.appUserModelId ||
+            existingShortcut.cwd?.toLowerCase() !== shortcutOptions.cwd.toLowerCase() ||
+            existingShortcut.description !== shortcutOptions.description ||
+            existingShortcut.icon !== shortcutOptions.icon) {
+          needsAction = true;
         }
-    } catch (e) {
-        // Shortcut doesn't exist or is invalid, so we need to create/update it.
+      } catch (e) {
+        console.warn('Could not read existing shortcut, will attempt to replace it.', e);
+        operation = 'replace';
+        needsAction = true;
+      }
+    } else {
+      needsAction = true; // Shortcut does not exist, so we need to create it.
+    }
+
+    if (!needsAction) {
+      return; // Shortcut exists and is already correct.
     }
 
     try {
-        const success = shell.writeShortcutLink(shortcutPath, 'update', shortcutOptions);
-        if (success) {
-            console.log('Desktop shortcut created/updated successfully.');
-        } else {
-            console.warn(
-                'Could not create/update desktop shortcut. This may be due to security software (e.g., Windows Controlled Folder Access). The application will continue to run normally.'
-            );
-        }
+      // The second argument is the operation. It must be 'create' for new shortcuts.
+      const success = shell.writeShortcutLink(shortcutPath, operation, shortcutOptions);
+      if (success) {
+        console.log(`Desktop shortcut successfully ${operation}d.`);
+      } else {
+        console.warn(`shell.writeShortcutLink returned false for operation '${operation}'. This may be due to security software.`);
+      }
     } catch (e) {
-        // Instead of showing a dialog, just log the error and continue.
-        // This prevents a crash or error message for a non-critical feature.
-        console.error('An error occurred while creating/updating desktop shortcut:', e);
+      console.error(`An error occurred during shortcut operation '${operation}':`, e);
     }
-  } catch(e) {
-      // Make the entire process non-blocking. If anything fails, just log and move on.
-      console.error('A critical error occurred during the shortcut creation process:', e);
+  } catch (e) {
+    console.error('A critical error occurred during the shortcut creation process:', e);
   }
 }
 
