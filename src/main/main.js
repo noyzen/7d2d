@@ -6,7 +6,7 @@ const WindowState = require('electron-window-state');
 const { XMLParser } = require('fast-xml-parser');
 
 const isDev = !app.isPackaged;
-const CWD = isDev ? process.cwd() : path.dirname(app.getPath('exe'));
+const CWD = process.cwd();
 
 // Paths
 const LAUNCHER_FILES_PATH = path.join(CWD, 'LauncherFiles');
