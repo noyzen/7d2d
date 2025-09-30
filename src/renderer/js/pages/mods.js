@@ -1,3 +1,5 @@
+import { rendererEvents } from '../events.js';
+
 function createModElement(mod, isEnabled) {
   const modEl = document.createElement('div');
   modEl.className = 'mod-card';
@@ -16,11 +18,9 @@ function createModElement(mod, isEnabled) {
   `;
   modEl.querySelector('input[type="checkbox"]').addEventListener('change', async (e) => {
     await window.mods.toggle({ folderName: mod.folderName, enable: e.target.checked });
+    // Let other components know the mods have changed
+    rendererEvents.emit('mods:changed');
     loadMods();
-    // Update home page stats in the background
-    const { enabled } = await window.mods.get();
-    const activeModsCount = document.getElementById('active-mods-count');
-    if (activeModsCount) activeModsCount.textContent = enabled.length;
   });
   return modEl;
 }
@@ -31,21 +31,27 @@ async function loadMods() {
     enabledModsList.innerHTML = '<div class="loading-spinner"></div>';
     disabledModsList.innerHTML = '<div class="loading-spinner"></div>';
 
-    const { enabled, disabled } = await window.mods.get();
-    
-    enabledModsList.innerHTML = '';
-    disabledModsList.innerHTML = '';
+    try {
+        const { enabled, disabled } = await window.mods.get();
+        
+        enabledModsList.innerHTML = '';
+        disabledModsList.innerHTML = '';
 
-    if (enabled.length > 0) {
-      enabled.forEach(mod => enabledModsList.appendChild(createModElement(mod, true)));
-    } else {
-      enabledModsList.innerHTML = '<p class="no-mods">No enabled mods found.</p>';
-    }
+        if (enabled.length > 0) {
+        enabled.forEach(mod => enabledModsList.appendChild(createModElement(mod, true)));
+        } else {
+        enabledModsList.innerHTML = '<p class="no-mods">No enabled mods found.</p>';
+        }
 
-    if (disabled.length > 0) {
-      disabled.forEach(mod => disabledModsList.appendChild(createModElement(mod, false)));
-    } else {
-      disabledModsList.innerHTML = '<p class="no-mods">No disabled mods found.</p>';
+        if (disabled.length > 0) {
+        disabled.forEach(mod => disabledModsList.appendChild(createModElement(mod, false)));
+        } else {
+        disabledModsList.innerHTML = '<p class="no-mods">No disabled mods found.</p>';
+        }
+    } catch (error) {
+        console.error("Failed to load mods:", error);
+        enabledModsList.innerHTML = '<p class="error-message">Could not load mods.</p>';
+        disabledModsList.innerHTML = '';
     }
 }
 

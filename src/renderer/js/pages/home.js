@@ -1,6 +1,9 @@
 import { settings, saveSettings } from '../state.js';
+import { rendererEvents } from '../events.js';
 
 let selfId = null;
+let firewallCheckInterval = null;
+let subscriptions = [];
 
 // --- HELPERS ---
 function getEl(id) { return document.getElementById(id); }
@@ -15,11 +18,14 @@ function updatePlayerNameVisibility() {
 
 async function updateHomePageStats() {
     try {
-        const { enabled } = await window.mods.get();
-        getEl('active-mods-count').textContent = enabled.length;
+        const modInfo = await window.mods.get();
+        const enabled = modInfo ? modInfo.enabled : [];
+        const el = getEl('active-mods-count');
+        if (el) el.textContent = enabled.length;
     } catch (e) {
         console.error("Failed to update home page stats:", e);
-        getEl('active-mods-count').textContent = 'N/A';
+        const el = getEl('active-mods-count');
+        if (el) el.textContent = 'N/A';
     }
 }
 
@@ -27,34 +33,40 @@ async function displayFirewallStatus() {
     const card = getEl('firewall-stat-card');
     const statusEl = getEl('firewall-status');
     if (window.appInfo.platform !== 'win32') {
-        card.style.display = 'none';
+        if (card) card.style.display = 'none';
         return;
     }
+    if (!statusEl) return;
+
     statusEl.textContent = 'Checking...';
     const result = await window.launcher.getFirewallStatus();
+    
+    // Check if element still exists in case user navigated away
+    const currentStatusEl = getEl('firewall-status');
+    if (!currentStatusEl) return;
+
     if (result.status === 'ON') {
-        statusEl.textContent = 'ON';
-        statusEl.style.color = 'var(--error)';
+        currentStatusEl.textContent = 'ON';
+        currentStatusEl.style.color = 'var(--error)';
     } else if (result.status === 'OFF') {
-        statusEl.textContent = 'OFF';
-        statusEl.style.color = 'var(--primary)';
+        currentStatusEl.textContent = 'OFF';
+        currentStatusEl.style.color = 'var(--primary)';
     } else {
-        statusEl.textContent = 'ERROR';
-        statusEl.style.color = 'var(--fg-med)';
+        currentStatusEl.textContent = 'ERROR';
+        currentStatusEl.style.color = 'var(--fg-med)';
     }
 }
 
 function renderHomePageLanStatus(peers) {
   const homeLanStatus = getEl('home-lan-status');
   if (!homeLanStatus) return;
-  const onlinePeers = peers.filter(p => p.status === 'online');
 
-  if (onlinePeers.length > 0) { 
+  if (peers && peers.length > 0) {
     homeLanStatus.classList.remove('hidden');
-    getEl('lan-player-count').textContent = onlinePeers.length;
+    getEl('lan-player-count').textContent = peers.length;
     const homePlayerList = getEl('home-player-list');
-    homePlayerList.innerHTML = ''; // Clear spinner
-    onlinePeers
+    homePlayerList.innerHTML = '';
+    peers
       .sort((a,b) => a.name.localeCompare(b.name))
       .forEach(peer => {
         const peerEl = document.createElement('div');
@@ -90,7 +102,7 @@ function saveAndExitEditMode() {
 // --- EVENT LISTENERS ---
 function setupEventListeners() {
     const startGameBtn = getEl('start-game-btn');
-    startGameBtn.addEventListener('click', async () => {
+    startGameBtn?.addEventListener('click', async () => {
         startGameBtn.disabled = true;
         startGameBtn.querySelector('span').textContent = 'LAUNCHING...';
         getEl('start-game-error').textContent = '';
@@ -109,25 +121,27 @@ function setupEventListeners() {
 
     window.launcher.onGameClosed(() => {
         if (settings.playMusic) getEl('bgm').muted = false;
-        startGameBtn.disabled = false;
-        startGameBtn.querySelector('span').textContent = 'START GAME';
+        if(startGameBtn) {
+            startGameBtn.disabled = false;
+            startGameBtn.querySelector('span').textContent = 'START GAME';
+        }
     });
 
-    getEl('go-to-chat-btn').addEventListener('click', () => {
-        document.querySelector('.nav-button[data-page="chat"]').click();
+    getEl('go-to-chat-btn')?.addEventListener('click', () => {
+        document.querySelector('.nav-button[data-page="chat"]')?.click();
     });
 
     // Player Name Editing
     const playerNameInput = getEl('player-name-input');
-    getEl('edit-player-name-btn').addEventListener('click', () => {
+    getEl('edit-player-name-btn')?.addEventListener('click', () => {
         getEl('player-name-display').classList.add('hidden');
         getEl('edit-player-name-btn').classList.add('hidden');
         playerNameInput.classList.remove('hidden');
         playerNameInput.focus();
         playerNameInput.select();
     });
-    playerNameInput.addEventListener('blur', saveAndExitEditMode);
-    playerNameInput.addEventListener('keydown', (e) => {
+    playerNameInput?.addEventListener('blur', saveAndExitEditMode);
+    playerNameInput?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') saveAndExitEditMode();
         else if (e.key === 'Escape') {
             playerNameInput.value = settings.playerName;
@@ -135,23 +149,35 @@ function setupEventListeners() {
         }
     });
 
-    window.lan.onPeerUpdate((data) => {
+    subscriptions.push(rendererEvents.on('lan:peer-update', (data) => {
         selfId = data.selfId;
         renderHomePageLanStatus(data.list);
-    });
+    }));
+
+    subscriptions.push(rendererEvents.on('mods:changed', updateHomePageStats));
 }
 
 // --- INIT ---
 export function init() {
     const playerName = settings.playerName || 'Survivor';
-    getEl('player-name-display').textContent = playerName;
-    getEl('player-name-input').value = playerName;
+    const nameDisplay = getEl('player-name-display');
+    const nameInput = getEl('player-name-input');
+    if (nameDisplay) nameDisplay.textContent = playerName;
+    if (nameInput) nameInput.value = playerName;
     
     updatePlayerNameVisibility();
     updateHomePageStats();
     displayFirewallStatus();
+    firewallCheckInterval = setInterval(displayFirewallStatus, 15000); // Check every 15s
+    
     setupEventListeners();
     
-    // Trigger an update for LAN status
+    // Trigger an initial update for LAN status
     window.lan.setUsername(playerName);
+}
+
+export function unmount() {
+    clearInterval(firewallCheckInterval);
+    subscriptions.forEach(unsubscribe => unsubscribe());
+    subscriptions = [];
 }

@@ -28,32 +28,18 @@ const CHAT_HISTORY_PATH = path.join(LAUNCHER_FILES_PATH, 'chathistory.json');
 
 function getLocalIp() {
     const networkInterfaces = os.networkInterfaces();
-    const ips = {
-        '192.168.': [],
-        '10.': [],
-        '172.': []
-    };
-
     for (const interfaceName in networkInterfaces) {
         const networkInterface = networkInterfaces[interfaceName];
         for (const interfaceInfo of networkInterface) {
             if (interfaceInfo.family === 'IPv4' && !interfaceInfo.internal) {
-                if (interfaceInfo.address.startsWith('192.168.')) {
-                    ips['192.168.'].push(interfaceInfo.address);
-                } else if (interfaceInfo.address.startsWith('10.')) {
-                    ips['10.'].push(interfaceInfo.address);
-                } else if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(interfaceInfo.address)) {
-                    ips['172.'].push(interfaceInfo.address);
+                // Prioritize common private network ranges
+                if (interfaceInfo.address.startsWith('192.168.') || interfaceInfo.address.startsWith('10.') || /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(interfaceInfo.address)) {
+                    return interfaceInfo.address;
                 }
             }
         }
     }
-
-    if (ips['192.168.'].length > 0) return ips['192.168.'][0];
-    if (ips['10.'].length > 0) return ips['10.'][0];
-    if (ips['172.'].length > 0) return ips['172.'][0];
-
-    return null; // No private IP found
+    return null; // No suitable IP found
 }
 
 function loadChatHistory() {
@@ -120,21 +106,17 @@ function checkPeers() {
   let changed = false;
 
   // Keep self alive in the list
-  if (peers.has(INSTANCE_ID)) {
-      const self = peers.get(INSTANCE_ID);
+  const self = peers.get(INSTANCE_ID);
+  if (self) {
       self.lastSeen = now;
-      if (self.status !== 'online') {
-          self.status = 'online';
-          changed = true;
-      }
   }
 
   for (const [id, peer] of peers.entries()) {
     if (id === INSTANCE_ID) continue; // Don't time out self
-    if (peer.status === 'online' && now - peer.lastSeen > PEER_TIMEOUT) {
-      peer.status = 'offline';
+    if (now - peer.lastSeen > PEER_TIMEOUT) {
+      peers.delete(id); // Remove peer from the list entirely
       changed = true;
-      console.log(`Peer timed out: ${peer.name} [${id}]`);
+      console.log(`Peer timed out and removed: ${peer.name} [${id}]`);
     }
   }
   if (changed) {
@@ -186,8 +168,8 @@ function handleStartDiscovery() {
             break;
           case 'disconnect':
             if (peers.has(data.id)) {
-              peers.get(data.id).status = 'offline';
-              console.log(`Peer disconnected gracefully: ${data.name} [${data.id}]`);
+              peers.delete(data.id); // Remove peer from the list entirely
+              console.log(`Peer disconnected gracefully and removed: ${data.name} [${data.id}]`);
               sendPeerUpdate();
             }
             break;
@@ -197,9 +179,9 @@ function handleStartDiscovery() {
       }
     });
 
-    lanSocket.bind(LAN_PORT, localIpAddress, () => {
+    lanSocket.bind(LAN_PORT, () => {
       lanSocket.setBroadcast(true);
-      console.log(`LAN socket bound to ${localIpAddress}. Starting discovery...`);
+      console.log(`LAN socket bound to port ${LAN_PORT}. Starting discovery...`);
       broadcastInterval = setInterval(() => broadcastPacket('heartbeat'), BROADCAST_INTERVAL);
       broadcastPacket('heartbeat');
       peerCheckInterval = setInterval(checkPeers, BROADCAST_INTERVAL);
@@ -209,18 +191,7 @@ function handleStartDiscovery() {
 
 function handleStopDiscovery() {
   ipcMain.handle('lan:stop-discovery', () => {
-    if (broadcastInterval) clearInterval(broadcastInterval);
-    if (peerCheckInterval) clearInterval(peerCheckInterval);
-    if (lanSocket) {
-      broadcastPacket('disconnect');
-      lanSocket.close();
-      lanSocket = null;
-    }
-    peers.clear();
-    broadcastInterval = null;
-    peerCheckInterval = null;
-    localIpAddress = null;
-    console.log('LAN discovery stopped.');
+    exports.shutdown();
   });
 }
 
@@ -272,16 +243,22 @@ exports.init = (mw) => {
 exports.shutdown = () => {
   if (broadcastInterval) clearInterval(broadcastInterval);
   if (peerCheckInterval) clearInterval(peerCheckInterval);
+  broadcastInterval = null;
+  peerCheckInterval = null;
   if (lanSocket) {
     broadcastPacket('disconnect');
-    lanSocket.close();
-    lanSocket = null;
+    // Give the packet a moment to send before closing
+    setTimeout(() => {
+        lanSocket.close();
+        lanSocket = null;
+    }, 100);
   }
+  console.log('LAN discovery stopped.');
 };
 
 exports.setUsername = (username) => {
   currentUsername = username;
-  updatePeer(INSTANCE_ID, currentUsername, OS_USERNAME, localIpAddress);
+  updatePeer(INSTANCE_ID, currentUsername, OS_USERNAME, 'local');
   sendPeerUpdate();
   broadcastPacket('heartbeat');
 };

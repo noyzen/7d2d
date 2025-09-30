@@ -1,22 +1,13 @@
-import { get, sanitizeText } from '../ui.js';
+import { sanitizeText } from '../ui.js';
 import { settings } from '../state.js';
+import { rendererEvents } from '../events.js';
+import { resetUnreadMessages } from '../notifications.js';
 
 let selfId = null;
-let unreadMessageCount = 0;
-
-function updateUnreadBadge() {
-  const badge = get.chatNotificationBadge();
-  if (!badge) return;
-  if (unreadMessageCount > 0) {
-    badge.textContent = unreadMessageCount > 9 ? '9+' : unreadMessageCount;
-    badge.style.display = 'block';
-  } else {
-    badge.style.display = 'none';
-  }
-}
+let subscriptions = [];
 
 function renderPlayerList(peers) {
-  const playerListEl = get.playerList();
+  const playerListEl = document.getElementById('player-list');
   if (!playerListEl) return;
 
   playerListEl.innerHTML = '';
@@ -25,10 +16,10 @@ function renderPlayerList(peers) {
     return;
   }
   
+  // Sort: self first, then alphabetically
   peers.sort((a, b) => {
     if (a.id === selfId) return -1;
     if (b.id === selfId) return 1;
-    if (a.status !== b.status) return a.status === 'online' ? -1 : 1;
     return a.name.localeCompare(b.name);
   });
 
@@ -37,7 +28,7 @@ function renderPlayerList(peers) {
     playerEl.className = 'player-item';
     if (peer.id === selfId) playerEl.classList.add('is-self');
     playerEl.innerHTML = `
-      <div class="status-dot ${peer.status}"></div>
+      <div class="status-dot online"></div>
       <div class="player-name-container">
         <span class="player-name" title="${peer.name}">${peer.name} ${peer.id === selfId ? '(You)' : ''}</span>
         <span class="player-os-name">${peer.osUsername || ''} - ${peer.address}</span>
@@ -48,8 +39,9 @@ function renderPlayerList(peers) {
 }
 
 function appendChatMessage(message) {
-  const chatMessagesEl = get.chatMessages();
+  const chatMessagesEl = document.getElementById('chat-messages');
   if (!chatMessagesEl) return;
+
   const isSelf = message.id === selfId;
   const messageEl = document.createElement('div');
   messageEl.className = 'chat-message';
@@ -71,9 +63,9 @@ function appendChatMessage(message) {
 }
 
 function setupEventListeners() {
-    get.chatForm()?.addEventListener('submit', (e) => {
+    document.getElementById('chat-form')?.addEventListener('submit', (e) => {
         e.preventDefault();
-        const chatInput = get.chatInput();
+        const chatInput = document.getElementById('chat-input');
         const message = chatInput.value.trim();
         if (message) {
             window.lan.sendMessage(message);
@@ -81,45 +73,39 @@ function setupEventListeners() {
         }
     });
 
-    window.lan.onPeerUpdate((data) => {
+    subscriptions.push(rendererEvents.on('lan:peer-update', (data) => {
         selfId = data.selfId;
         renderPlayerList(data.list);
-    });
+    }));
 
-    window.lan.onMessageReceived((message) => {
-        // Prevent duplicate self-messages from appearing
-        if (message.id === selfId && document.querySelector('.chat-message:last-child')?.textContent.includes(message.text)) {
-            return;
-        }
+    subscriptions.push(rendererEvents.on('lan:message-received', (message) => {
         appendChatMessage(message);
-        if (message.id !== selfId && !document.querySelector('.nav-button[data-page="chat"]').classList.contains('active')) {
-            unreadMessageCount++;
-            updateUnreadBadge();
-        }
-    });
+    }));
 
     document.getElementById('clear-chat-btn')?.addEventListener('click', async () => {
         if (confirm('Are you sure you want to permanently delete the chat history? This cannot be undone.')) {
             await window.lan.clearChatHistory();
-            const chatMessagesEl = get.chatMessages();
+            const chatMessagesEl = document.getElementById('chat-messages');
             chatMessagesEl.innerHTML = '<div class="chat-notice">Chat history has been cleared.</div>';
         }
     });
 }
 
 export async function init() {
-    // Clear notifications on entering chat page
-    unreadMessageCount = 0;
-    updateUnreadBadge();
+    resetUnreadMessages();
     setupEventListeners();
 
-    const chatMessagesEl = get.chatMessages();
+    const chatMessagesEl = document.getElementById('chat-messages');
     
     // Load chat history
     if (chatMessagesEl) {
         chatMessagesEl.innerHTML = '<div class="chat-notice">Loading history...</div>';
         const history = await window.lan.getChatHistory();
         
+        // This is a bit of a hack. Since peer-update is async, selfId might not be set yet.
+        // We can get it from the settings object as a fallback for initial render.
+        const initialData = await window.lan.onPeerUpdate((data) => { selfId = data.selfId; });
+
         chatMessagesEl.innerHTML = '';
         if (history.length > 0) {
             history.forEach(appendChatMessage);
@@ -131,4 +117,9 @@ export async function init() {
     
     // Trigger an update for peer list
     window.lan.setUsername(settings.playerName || 'Survivor');
+}
+
+export function unmount() {
+    subscriptions.forEach(unsubscribe => unsubscribe());
+    subscriptions = [];
 }

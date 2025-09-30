@@ -1,4 +1,6 @@
-import { settings, saveSettings, applyInitialSettings, LAUNCH_PARAMETERS_CONFIG, initDefaultSettings } from './state.js';
+import { settings, applyInitialSettings, initDefaultSettings } from './state.js';
+import { rendererEvents } from './events.js';
+import { incrementUnreadMessages } from './notifications.js';
 
 // --- DOM ELEMENTS ---
 const minBtn = document.getElementById('min-btn');
@@ -13,9 +15,13 @@ const navButtons = document.querySelectorAll('.nav-button');
 const contentArea = document.querySelector('.content-area');
 const developerNavBtn = document.getElementById('developer-nav-btn');
 
+// --- STATE ---
 let logoClickCount = 0;
 let logoClickTimer = null;
 let lanChatStarted = false;
+let selfId = null;
+let currentPageModule = null;
+
 
 // --- WINDOW CONTROLS ---
 async function refreshMaxButton() {
@@ -39,6 +45,12 @@ function setupWindowControls() {
 // --- NAVIGATION & PAGE LOADING ---
 async function loadPage(pageName) {
     try {
+        // Unmount the previous page's module if it exists and has an unmount function
+        if (currentPageModule && typeof currentPageModule.unmount === 'function') {
+            currentPageModule.unmount();
+            currentPageModule = null;
+        }
+
         const response = await fetch(`pages/${pageName}.html`);
         if (!response.ok) throw new Error(`Failed to load page: ${pageName}`);
         contentArea.innerHTML = await response.text();
@@ -46,11 +58,12 @@ async function loadPage(pageName) {
         // Dynamically import and initialize the page's JS module
         const pageModule = await import(`./pages/${pageName}.js`);
         if (pageModule && typeof pageModule.init === 'function') {
+            currentPageModule = pageModule;
             pageModule.init();
         }
     } catch (error) {
         console.error('Page loading error:', error);
-        contentArea.innerHTML = `<div class="page active"><p class="error-message">Error: Could not load page content.</p></div>`;
+        contentArea.innerHTML = `<div class="page active"><div class="page-header"><h1>Error</h1><p>Could not load page content.</p></div></div>`;
     }
 }
 
@@ -81,17 +94,29 @@ function setupDeveloperModeUnlock() {
     });
 }
 
+// --- GLOBAL EVENT LISTENERS ---
+function setupGlobalEventListeners() {
+    window.lan.onPeerUpdate((data) => {
+        selfId = data.selfId;
+        rendererEvents.emit('lan:peer-update', data);
+    });
+
+    window.lan.onMessageReceived((message) => {
+        const chatNavButton = document.querySelector('.nav-button[data-page="chat"]');
+        if (selfId && message.id !== selfId && !chatNavButton.classList.contains('active')) {
+            incrementUnreadMessages();
+        }
+        rendererEvents.emit('lan:message-received', message);
+    });
+}
+
 
 // --- INITIALIZATION ---
 async function init() {
   setupWindowControls();
   setupNavigation();
   setupDeveloperModeUnlock();
-
-  if (window.appInfo.platform !== 'win32') {
-    // Registry editor is a developer tool, hide it if not on windows
-    document.head.insertAdjacentHTML('beforeend', `<style>#registry-editor-wrapper { display: none; }</style>`);
-  }
+  setupGlobalEventListeners();
 
   const data = await window.launcher.getInitialData();
   if (data.error) {
@@ -114,6 +139,7 @@ async function init() {
   }
 
   // Load the initial page
+  document.querySelector('.nav-button[data-page="home"]').classList.add('active');
   loadPage('home');
 }
 
