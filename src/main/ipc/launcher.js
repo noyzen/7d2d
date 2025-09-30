@@ -19,6 +19,31 @@ function handleGetGamePath() {
     ipcMain.handle('launcher:get-game-path', () => CWD);
 }
 
+function handleRelaunchAsAdmin() {
+    ipcMain.handle('launcher:relaunch-as-admin', () => {
+        if (process.platform === 'win32') {
+            const exePath = app.getPath('exe');
+            try {
+                // Relaunching with 'runas' verb to trigger UAC prompt for elevation
+                const child = spawn('cmd.exe', ['/c', 'start', '""', `"${exePath}"`], {
+                    detached: true,
+                    shell: true,
+                    stdio: 'ignore',
+                    windowsVerbatimArguments: true
+                });
+                child.unref();
+                app.quit();
+                return { success: true };
+            } catch (e) {
+                console.error('Failed to relaunch as admin:', e);
+                return { success: false, error: e.message };
+            }
+        }
+        return { success: false, error: 'Operation only supported on Windows.' };
+    });
+}
+
+
 function handleGetInitialData() {
   ipcMain.handle('launcher:get-initial-data', () => {
     if (!fs.existsSync(LAUNCHER_FILES_PATH)) {
@@ -46,12 +71,15 @@ function handleGetInitialData() {
     } catch (e) {
       console.error("Failed to load settings:", e);
     }
+    
+    const isElevated = process.platform === 'win32' ? process.env.SESSIONNAME?.toLowerCase().includes('rdp-tcp') || process.getuid() === 0 : process.getuid() === 0;
 
     return {
       success: true,
       bgPath: `file:///${bgPath.replace(/\\/g, '/')}`,
       bgmPath: `file:///${bgmPath.replace(/\\/g, '/')}`,
-      settings
+      settings,
+      isElevated
     };
   });
 }
@@ -255,4 +283,5 @@ exports.init = (mw) => {
   handleSelectFile();
   handleGetFirewallStatus();
   handleGetGamePath();
+  handleRelaunchAsAdmin();
 };

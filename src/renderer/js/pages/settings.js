@@ -1,5 +1,5 @@
 import { settings, saveSettings } from '../state.js';
-import { formatBytes, showOperationResult } from '../ui.js';
+import { formatBytes, showOperationResult, sanitizeText } from '../ui.js';
 
 let isBackupOperationInProgress = false;
 
@@ -50,6 +50,24 @@ function setOperationInProgress(inProgress, label = '') {
     }
 }
 
+function renderHostStatus(downloaders) {
+    const panel = document.getElementById('host-status-panel');
+    if (!panel) return;
+
+    if (settings.isSharingGame) {
+        panel.classList.remove('hidden');
+        document.getElementById('host-downloader-count').textContent = downloaders.length;
+        const listEl = document.getElementById('host-downloader-list');
+        if (downloaders.length > 0) {
+            listEl.innerHTML = downloaders.map(ip => `<li>${sanitizeText(ip)}</li>`).join('');
+        } else {
+            listEl.innerHTML = '<li>No active downloads.</li>';
+        }
+    } else {
+        panel.classList.add('hidden');
+    }
+}
+
 
 // --- EVENT LISTENERS ---
 function setupEventListeners() {
@@ -70,6 +88,8 @@ function setupEventListeners() {
         settings.isSharingGame = e.target.checked;
         saveSettings();
         window.transfer.toggleSharing(settings.isSharingGame);
+        // Immediately update visibility of host panel
+        renderHostStatus([]); 
     });
 
     // Backup & Restore
@@ -111,6 +131,8 @@ function setupEventListeners() {
 
     // Progress listener
     window.backup.onProgress(updateProgress);
+    // Host status listener
+    window.transfer.onActiveDownloadsUpdate(renderHostStatus);
 }
 
 export function init() {
@@ -125,5 +147,6 @@ export function init() {
     }
 
     renderBackupStatus();
+    renderHostStatus([]); // Initial render
     setupEventListeners();
 }

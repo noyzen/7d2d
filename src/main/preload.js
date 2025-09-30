@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('launcher', {
   selectFile: () => ipcRenderer.invoke('launcher:select-file'),
   getFirewallStatus: () => ipcRenderer.invoke('launcher:get-firewall-status'),
   getGamePath: () => ipcRenderer.invoke('launcher:get-game-path'),
+  relaunchAsAdmin: () => ipcRenderer.invoke('launcher:relaunch-as-admin'),
   onGameClosed: (callback) => ipcRenderer.on('game:closed', () => callback()),
 });
 
@@ -55,4 +56,5 @@ contextBridge.exposeInMainWorld('transfer', {
     restartForUpdate: () => ipcRenderer.invoke('transfer:restart-for-update'),
     onProgress: (callback) => ipcRenderer.on('transfer:progress', (_e, progress) => callback(progress)),
     onComplete: (callback) => ipcRenderer.on('transfer:complete', (_e, result) => callback(result)),
+    onActiveDownloadsUpdate: (callback) => ipcRenderer.on('transfer:active-downloads-update', (_e, downloaders) => callback(downloaders)),
 });

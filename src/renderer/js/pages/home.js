@@ -146,6 +146,25 @@ function saveAndExitEditMode() {
     getEl('edit-player-name-btn').classList.remove('hidden');
 }
 
+async function handleDownloadError(error) {
+    if (error === 'requires-admin') {
+        const confirmed = await showConfirmationPrompt(
+            'Administrator Rights Required',
+            `<p>This operation requires administrator privileges to modify game files in a protected directory.</p>
+             <p>Do you want to restart the launcher as an administrator to continue?</p>`,
+            'Restart as Admin',
+            'Cancel'
+        );
+        if (confirmed) {
+            await window.launcher.relaunchAsAdmin();
+        }
+    } else {
+        // Handle other errors normally
+        alert(`An unexpected error occurred during download: ${error}`);
+    }
+}
+
+
 // --- EVENT LISTENERS ---
 function setupEventListeners() {
     const startGameBtn = getEl('start-game-btn');
@@ -210,8 +229,12 @@ function setupEventListeners() {
             document.getElementById('transfer-close-btn').classList.add('hidden');
             overlay.classList.remove('hidden');
             
-            // Start download
-            window.transfer.downloadGame({ host, type });
+            // Start download and handle potential errors
+            const result = await window.transfer.downloadGame({ host, type });
+            if (!result.success) {
+                document.getElementById('transfer-progress-overlay').classList.add('hidden');
+                handleDownloadError(result.error);
+            }
         }
     });
 

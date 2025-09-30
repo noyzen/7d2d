@@ -208,6 +208,19 @@
 .backup-result-message { text-align: center; font-weight: bold; height: 1.2em; transition: color 0.3s; padding-top: 5px; }
 .backup-result-message.success { color: var(--primary); }
 .backup-result-message.error { color: var(--error); }
+.host-status-panel {
+    background: rgba(16, 16, 16, 0.5); border: 1px solid var(--border-glass); border-radius: 8px;
+    padding: 20px; display: flex; flex-direction: column; gap: 10px;
+}
+.host-status-header { display: flex; align-items: center; gap: 10px; }
+.host-status-header i { color: var(--primary); }
+.host-status-header h3 { margin: 0; font-size: 1.1rem; }
+#host-downloader-list {
+    list-style: none; padding-left: 20px; margin: 0;
+    display: flex; flex-direction: column; gap: 5px;
+}
+#host-downloader-list li { font-family: monospace; color: var(--fg-med); }
+
 
 /* --- PAGE: DEVELOPER --- */
 .config-editor-container, .registry-editor-container, .about-page-editor { display: flex; flex-direction: column; gap: 15px; }

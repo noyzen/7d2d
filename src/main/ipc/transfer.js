@@ -9,8 +9,26 @@ const lanIpc = require('./lan');
 let mainWindow;
 let fileServer = null;
 let updateInfo = null;
+const activeDownloads = new Map();
+let downloadMonitorInterval = null;
 
 // --- FILE SERVER HELPERS ---
+
+function monitorDownloads() {
+    const now = Date.now();
+    let changed = false;
+    for (const [ip, data] of activeDownloads.entries()) {
+        if (now - data.lastSeen > 10000) { // 10 second timeout
+            activeDownloads.delete(ip);
+            changed = true;
+        }
+    }
+    if (changed || downloadMonitorInterval) { // Send initial update
+        const downloaders = Array.from(activeDownloads.keys());
+        mainWindow?.webContents.send('transfer:active-downloads-update', downloaders);
+    }
+}
+
 
 async function listFilesRecursive(dir) {
     const exePath = app.getPath('exe');
@@ -48,6 +66,12 @@ function startFileServer() {
             return resolve(fileServer.address().port);
         }
         const server = http.createServer(async (req, res) => {
+            const ip = req.socket.remoteAddress;
+            if (ip) {
+                activeDownloads.set(ip, { lastSeen: Date.now() });
+                monitorDownloads();
+            }
+
             const url = new URL(req.url, `http://${req.headers.host}`);
             res.setHeader('Access-Control-Allow-Origin', '*');
 
@@ -88,6 +112,7 @@ function startFileServer() {
         
         server.listen(0, '0.0.0.0', () => { // Listen on port 0 to get a random free port
             fileServer = server;
+            downloadMonitorInterval = setInterval(monitorDownloads, 5000);
             const port = server.address().port;
             console.log(`File server started on port ${port}`);
             resolve(port);
@@ -97,6 +122,12 @@ function startFileServer() {
 }
 
 function stopFileServer() {
+    if (downloadMonitorInterval) {
+        clearInterval(downloadMonitorInterval);
+        downloadMonitorInterval = null;
+    }
+    activeDownloads.clear();
+    monitorDownloads(); // Send one last empty update
     if (fileServer) {
         fileServer.close(() => {
             console.log('File server stopped.');
@@ -172,6 +203,10 @@ function handleDownloadGame() {
                             await fs.promises.rm(fullPath, { recursive: true, force: true });
                         } catch (e) {
                             console.warn(`Could not delete item during cleanup (might be locked): ${fullPath}`, e.message);
+                            if (e.code === 'EPERM' || e.code === 'EBUSY') {
+                                throw new Error('requires-admin');
+                            }
+                            throw e; // Re-throw other errors
                         }
                     }
                 }
@@ -183,7 +218,12 @@ function handleDownloadGame() {
                 const localPath = path.join(CWD, type === 'launcher' ? file.path.replace('LauncherFiles', 'LauncherFiles' + tempSuffix) : file.path);
 
                 if (file.type === 'dir') {
-                    await fs.promises.mkdir(localPath, { recursive: true });
+                    try {
+                        await fs.promises.mkdir(localPath, { recursive: true });
+                    } catch(e) {
+                        if (e.code === 'EPERM') throw new Error('requires-admin');
+                        throw e;
+                    }
                 } else {
                     await fs.promises.mkdir(path.dirname(localPath), { recursive: true });
                     const fileStream = fs.createWriteStream(localPath);
@@ -206,7 +246,10 @@ function handleDownloadGame() {
                             });
                             res.pipe(fileStream);
                             fileStream.on('finish', resolve);
-                            fileStream.on('error', reject);
+                            fileStream.on('error', (err) => {
+                                if (err.code === 'EPERM') return reject(new Error('requires-admin'));
+                                reject(err);
+                            });
                         }).on('error', reject);
                     });
                 }
@@ -226,7 +269,8 @@ function handleDownloadGame() {
             return { success: true };
         } catch (e) {
             console.error('Download failed:', e);
-            mainWindow?.webContents.send('transfer:complete', { success: false, error: e.message });
+            const errorMessage = e.message === 'requires-admin' ? e.message : `An unexpected error occurred: ${e.message}`;
+            mainWindow?.webContents.send('transfer:complete', { success: false, error: errorMessage });
             return { success: false, error: e.message };
         }
     });
