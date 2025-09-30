@@ -1,15 +1,16 @@
-const { ipcMain, app } = require('electron');
+const { ipcMain } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
-const { spawn } = require('child_process');
-const { CWD } = require('../constants');
+const { CWD, OS_USERNAME } = require('../constants');
 const lanIpc = require('./lan');
 
 let mainWindow;
 let fileServer = null;
-const activeDownloads = new Map();
-let downloadMonitorInterval = null;
+const activeDownloaders = new Map(); // Host-side state
+let downloadersUpdateInterval = null;
+
+let currentDownload = { isCancelled: false, request: null }; // Client-side state
 
 // This is the single source of truth for all files and folders that are part of a game transfer.
 // The running launcher '7d2dLauncher.exe' is INTENTIONALLY OMITTED.
@@ -29,20 +30,25 @@ const GAME_ASSETS_TO_TRANSFER = [
     'WindowsPlayer_player_Master_mono_x64.pdb'
 ];
 
-// --- FILE SERVER HELPERS ---
+// --- FILE SERVER HELPERS (HOST) ---
 
-function monitorDownloads() {
+function broadcastDownloadersUpdate() {
     const now = Date.now();
     let changed = false;
-    for (const [ip, data] of activeDownloads.entries()) {
-        if (now - data.lastSeen > 10000) { // 10 second timeout
-            activeDownloads.delete(ip);
+    // Timeout inactive downloaders
+    for (const [ip, data] of activeDownloaders.entries()) {
+        if (now - data.lastSeen > 15000) { // 15 second timeout
+            activeDownloaders.delete(ip);
             changed = true;
         }
     }
-    if (changed || downloadMonitorInterval) { // Send initial update
-        const downloaders = Array.from(activeDownloads.keys());
-        mainWindow?.webContents.send('transfer:active-downloads-update', downloaders);
+    
+    const downloadersList = Array.from(activeDownloaders.values());
+    mainWindow?.webContents.send('transfer:active-downloads-update', downloadersList);
+
+    if (changed && activeDownloaders.size === 0) {
+        // If the last downloader was just removed, send one more update.
+        mainWindow?.webContents.send('transfer:active-downloads-update', []);
     }
 }
 
@@ -90,52 +96,61 @@ function startFileServer() {
         }
         const server = http.createServer(async (req, res) => {
             const ip = req.socket.remoteAddress;
-            if (ip) {
-                activeDownloads.set(ip, { lastSeen: Date.now() });
-                monitorDownloads();
-            }
-
             const url = new URL(req.url, `http://${req.headers.host}`);
             res.setHeader('Access-Control-Allow-Origin', '*');
 
-            if (url.pathname === '/list-files') {
+            if (url.pathname === '/list-files' && req.method === 'GET') {
                 try {
                     const files = await listAllowedFiles();
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify(files));
                 } catch (e) {
-                    res.writeHead(500);
-                    res.end(JSON.stringify({ error: e.message }));
+                    res.writeHead(500).end(JSON.stringify({ error: e.message }));
                 }
-            } else if (url.pathname === '/get-file') {
+            } else if (url.pathname === '/get-file' && req.method === 'GET') {
                 try {
                     const filePath = url.searchParams.get('path');
                     if (!filePath) throw new Error('File path is required.');
-                    
                     const safePath = path.normalize(filePath).replace(/^(\.\.(\/|\\|$))+/, '');
                     const fullPath = path.join(CWD, safePath);
-
                     if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
-                        res.writeHead(404);
-                        res.end('File not found.');
-                        return;
+                        return res.writeHead(404).end('File not found.');
                     }
-
                     res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
                     fs.createReadStream(fullPath).pipe(res);
                 } catch (e) {
-                    res.writeHead(500);
-                    res.end(JSON.stringify({ error: e.message }));
+                    res.writeHead(500).end(JSON.stringify({ error: e.message }));
                 }
+            } else if (url.pathname === '/register-downloader' && req.method === 'POST') {
+                let body = '';
+                req.on('data', chunk => { body += chunk; });
+                req.on('end', () => {
+                    const { playerName, osUsername } = JSON.parse(body);
+                    activeDownloaders.set(ip, { ip, playerName, osUsername, progress: 0, lastSeen: Date.now() });
+                    broadcastDownloadersUpdate();
+                    res.writeHead(200).end();
+                });
+            } else if (url.pathname === '/report-progress' && req.method === 'POST') {
+                 let body = '';
+                req.on('data', chunk => { body += chunk; });
+                req.on('end', () => {
+                    const { progress } = JSON.parse(body);
+                    if (activeDownloaders.has(ip)) {
+                        const downloader = activeDownloaders.get(ip);
+                        downloader.progress = progress;
+                        downloader.lastSeen = Date.now();
+                        broadcastDownloadersUpdate();
+                    }
+                    res.writeHead(200).end();
+                });
             } else {
-                res.writeHead(404);
-                res.end('Not Found');
+                res.writeHead(404).end('Not Found');
             }
         });
         
-        server.listen(0, '0.0.0.0', () => { // Listen on port 0 to get a random free port
+        server.listen(0, '0.0.0.0', () => {
             fileServer = server;
-            downloadMonitorInterval = setInterval(monitorDownloads, 5000);
+            downloadersUpdateInterval = setInterval(broadcastDownloadersUpdate, 5000);
             const port = server.address().port;
             console.log(`File server started on port ${port}`);
             resolve(port);
@@ -145,12 +160,12 @@ function startFileServer() {
 }
 
 function stopFileServer() {
-    if (downloadMonitorInterval) {
-        clearInterval(downloadMonitorInterval);
-        downloadMonitorInterval = null;
+    if (downloadersUpdateInterval) {
+        clearInterval(downloadersUpdateInterval);
+        downloadersUpdateInterval = null;
     }
-    activeDownloads.clear();
-    monitorDownloads(); // Send one last empty update
+    activeDownloaders.clear();
+    broadcastDownloadersUpdate();
     if (fileServer) {
         fileServer.close(() => {
             console.log('File server stopped.');
@@ -179,14 +194,41 @@ function handleToggleSharing() {
     });
 }
 
+function handleCancelDownload() {
+    ipcMain.handle('transfer:cancel-download', () => {
+        if (currentDownload.request) {
+            currentDownload.isCancelled = true;
+            currentDownload.request.destroy(); // Abort the current HTTP request
+        }
+        return { success: true };
+    });
+}
+
 function handleDownloadGame() {
-    ipcMain.handle('transfer:download-game', async (_, { host }) => {
+    ipcMain.handle('transfer:download-game', async (_, { host, playerName }) => {
+        currentDownload = { isCancelled: false, request: null }; // Reset state
         try {
-            // 1. Get file list from host (this list is guaranteed to be safe)
+            // 0. Register as a downloader with the host
+            await new Promise((resolve, reject) => {
+                const req = http.request({
+                    hostname: host.address, port: host.sharePort, path: '/register-downloader', method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                }, res => res.statusCode === 200 ? resolve() : reject(new Error(`Host rejected registration: ${res.statusCode}`)));
+                req.on('error', reject);
+                req.write(JSON.stringify({ playerName, osUsername: OS_USERNAME }));
+                req.end();
+            });
+
+            // 1. Get file list from host
             const fileListUrl = `http://${host.address}:${host.sharePort}/list-files`;
-            const fileListResponse = await new Promise((resolve, reject) => http.get(fileListUrl, resolve).on('error', reject));
+            const fileListResponse = await new Promise((resolve, reject) => {
+                const req = http.get(fileListUrl, resolve);
+                req.on('error', reject);
+                currentDownload.request = req;
+            });
             let fileListJson = '';
             for await (const chunk of fileListResponse) { fileListJson += chunk; }
+            if (currentDownload.isCancelled) throw new Error('cancelled');
             const filesToDownload = JSON.parse(fileListJson);
 
             const totalSize = filesToDownload.filter(f => f.type === 'file').reduce((sum, f) => sum + f.size, 0);
@@ -196,24 +238,32 @@ function handleDownloadGame() {
 
             // 2. Clear target directory using the same safe-list
             for (const item of GAME_ASSETS_TO_TRANSFER) {
+                if (currentDownload.isCancelled) throw new Error('cancelled');
                 const fullPath = path.join(CWD, item);
                 if (fs.existsSync(fullPath)) {
                     try {
                         await fs.promises.rm(fullPath, { recursive: true, force: true });
                     } catch (e) {
-                        console.warn(`Could not delete item during cleanup (might be locked): ${fullPath}`, e.message);
-                        if (e.code === 'EPERM' || e.code === 'EBUSY' || (e.message && e.message.toLowerCase().includes('operation not permitted'))) {
+                        if (e.code === 'EPERM' || e.code === 'EBUSY' || (e.message?.toLowerCase().includes('operation not permitted'))) {
                             throw new Error('requires-admin');
                         }
-                        throw e; // Re-throw other errors
+                        throw e;
                     }
                 }
             }
             
             // 3. Download files
             for (let i = 0; i < filesToDownload.length; i++) {
+                if (currentDownload.isCancelled) throw new Error('cancelled');
                 const file = filesToDownload[i];
                 const localPath = path.join(CWD, file.path);
+                
+                const progressPercentage = totalSize > 0 ? Math.round((downloadedSize / totalSize) * 100) : 0;
+                // Report progress to host
+                http.request({
+                    hostname: host.address, port: host.sharePort, path: '/report-progress', method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                }).end(JSON.stringify({ progress: progressPercentage }));
 
                 if (file.type === 'dir') {
                     try {
@@ -228,11 +278,12 @@ function handleDownloadGame() {
                     const fileUrl = `http://${host.address}:${host.sharePort}/get-file?path=${encodeURIComponent(file.path)}`;
                     
                     await new Promise((resolve, reject) => {
-                        http.get(fileUrl, res => {
+                        const req = http.get(fileUrl, res => {
+                            currentDownload.request = req;
                             res.on('data', chunk => {
                                 downloadedSize += chunk.length;
                                 const now = Date.now();
-                                if (now - lastProgressTime > 250) { // Update speed ~4 times/sec
+                                if (now - lastProgressTime > 250) {
                                     const speed = (downloadedSize - lastDownloadedSize) / ((now - lastProgressTime) / 1000);
                                     lastProgressTime = now;
                                     lastDownloadedSize = downloadedSize;
@@ -243,7 +294,7 @@ function handleDownloadGame() {
                                 }
                             });
                             res.pipe(fileStream);
-                            fileStream.on('finish', resolve);
+                            fileStream.on('finish', () => { currentDownload.request = null; resolve(); });
                             fileStream.on('error', (err) => {
                                 if (err.code === 'EPERM') return reject(new Error('requires-admin'));
                                 reject(err);
@@ -252,22 +303,21 @@ function handleDownloadGame() {
                     });
                 }
             }
-
+            
+            http.request({ hostname: host.address, port: host.sharePort, path: '/report-progress', method: 'POST' }).end(JSON.stringify({ progress: 100 }));
             mainWindow?.webContents.send('transfer:complete', { success: true, type: 'full' });
             return { success: true };
         } catch (e) {
-            console.error('Download failed:', e);
-            const isPermissionError = e.code === 'EPERM' || e.code === 'EBUSY' || (e.message && (e.message.toLowerCase().includes('permission') || e.message.toLowerCase().includes('access is denied')));
-            const finalError = e.message === 'requires-admin' || isPermissionError ? 'requires-admin' : e.message;
-            mainWindow?.webContents.send('transfer:complete', { success: false, error: finalError });
-            return { success: false, error: finalError };
-        }
-    });
-}
+            const finalError = (e.message === 'cancelled') ? 'cancelled'
+                             : (e.message === 'requires-admin' || e.code === 'EPERM' || e.code === 'EBUSY') ? 'requires-admin'
+                             : e.message;
 
-function handleRestartForUpdate() {
-    ipcMain.handle('transfer:restart-for-update', () => {
-        // This is now obsolete as launcher self-update is removed, but kept for API consistency.
+            const completeMessage = (finalError === 'cancelled') ? 'Download cancelled by user.' : finalError;
+            mainWindow?.webContents.send('transfer:complete', { success: false, error: completeMessage });
+            return { success: false, error: finalError };
+        } finally {
+            currentDownload = { isCancelled: false, request: null };
+        }
     });
 }
 
@@ -275,7 +325,7 @@ exports.init = (mw) => {
   mainWindow = mw;
   handleToggleSharing();
   handleDownloadGame();
-  handleRestartForUpdate();
+  handleCancelDownload();
 };
 
 exports.shutdown = () => {

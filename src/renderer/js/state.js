@@ -1,3 +1,5 @@
+import { rendererEvents } from "./events.js";
+
 export let settings = {
   playMusic: true,
   exitOnLaunch: true,
@@ -59,6 +61,7 @@ export const LAUNCH_PARAMETERS_CONFIG = {
 
 export function saveSettings() {
   window.launcher.saveSettings(settings);
+  rendererEvents.emit('settings:changed', settings);
 }
 
 export function updateAndSaveSettings(newSettings) {

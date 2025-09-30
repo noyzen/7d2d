@@ -63,7 +63,6 @@ async function displayFirewallStatus() {
 
     const result = await window.launcher.getFirewallStatus();
     
-    // Check if element still exists in case user navigated away
     const currentStatusEl = getEl('firewall-status');
     if (!currentStatusEl) return;
 
@@ -124,7 +123,6 @@ function renderHomePageLanStatus(peers) {
     knownPeerIds = new Set();
   }
 
-  // Handle Download Button visibility
   const downloadBtn = getEl('download-game-btn');
   const sharingPeers = peers.filter(p => p.isSharing && p.id !== selfId);
   downloadBtn.style.display = sharingPeers.length > 0 ? 'flex' : 'none';
@@ -152,21 +150,44 @@ async function handleDownloadError(error) {
             'Administrator Rights Required',
             `<p>This operation requires administrator privileges to modify game files in a protected directory.</p>
              <p>Do you want to restart the launcher as an administrator to continue?</p>`,
-            'Restart as Admin',
-            'Cancel'
+            'Restart as Admin', 'Cancel'
         );
-        if (confirmed) {
-            await window.launcher.relaunchAsAdmin();
-        }
+        if (confirmed) await window.launcher.relaunchAsAdmin();
     } else {
-        await showAlert(
-            'Download Failed',
-            `<p>An unexpected error occurred during the download process:</p>
-             <div class="modal-path-display" style="color: var(--error);">${sanitizeText(error)}</div>`
-        );
+        await showAlert('Download Failed', `<p>An unexpected error occurred:</p><div class="modal-path-display" style="color: var(--error);">${sanitizeText(error)}</div>`);
     }
 }
 
+function renderHostDashboard(downloaders) {
+    const listEl = getEl('downloader-list');
+    if (!listEl) return;
+    
+    if (downloaders.length > 0) {
+        listEl.innerHTML = downloaders.map(d => `
+            <div class="downloader-item">
+                <div class="downloader-info">
+                    <div>
+                        <div class="downloader-name">${sanitizeText(d.playerName)}</div>
+                        <div class="downloader-details">${sanitizeText(d.osUsername)} - ${sanitizeText(d.ip)}</div>
+                    </div>
+                    <div class="downloader-progress-percent">${d.progress}%</div>
+                </div>
+                <div class="downloader-progress-bar">
+                    <div class="downloader-progress-bar-inner" style="width: ${d.progress}%;"></div>
+                </div>
+            </div>
+        `).join('');
+    } else {
+        listEl.innerHTML = '<p class="no-mods" style="text-align: center;">No active downloads.</p>';
+    }
+}
+
+function checkDashboardVisibility() {
+    const dashboard = getEl('host-dashboard');
+    if (dashboard) {
+        dashboard.style.display = settings.isSharingGame ? 'flex' : 'none';
+    }
+}
 
 // --- EVENT LISTENERS ---
 function setupEventListeners() {
@@ -198,34 +219,27 @@ function setupEventListeners() {
         const { host } = selection;
         const gamePath = await window.launcher.getGamePath();
         const safeGamePath = sanitizeText(gamePath);
-
-        const title = 'Confirm Full Game Download';
-        const message = `
-            <p><strong>DANGER!</strong></p>
-            <p>This will <strong>DELETE KNOWN GAME FILES</strong> inside the following directory (except for the launcher itself) and replace them with files from the host.</p>
+        
+        const confirmed = await showConfirmationPrompt('Confirm Full Game Download', `
+            <p><strong>DANGER!</strong> This will <strong>DELETE KNOWN GAME FILES</strong> inside the directory below and replace them with files from the host.</p>
             <div class="modal-path-display">${safeGamePath}</div>
-            <p>This action cannot be undone. Are you absolutely sure you want to continue?</p>
-        `;
-
-        const confirmed = await showConfirmationPrompt(title, message, 'Confirm', 'Cancel');
+            <p>This action cannot be undone. Are you sure?</p>`, 'Confirm', 'Cancel'
+        );
 
         if (confirmed) {
-            // Pause music to release file lock on bgm.mp3 before deleting/overwriting
             document.getElementById('bgm').pause();
 
-            // Show progress modal
             const overlay = document.getElementById('transfer-progress-overlay');
             document.getElementById('transfer-progress-title').textContent = 'Downloading Full Game...';
             document.getElementById('transfer-progress-content').classList.remove('hidden');
             document.getElementById('transfer-complete-message').textContent = '';
-            document.getElementById('transfer-restart-btn').classList.add('hidden');
             document.getElementById('transfer-close-btn').classList.add('hidden');
+            document.getElementById('transfer-cancel-btn').classList.remove('hidden');
             overlay.classList.remove('hidden');
             
-            // Start download and handle potential errors
-            const result = await window.transfer.downloadGame({ host });
-            if (!result.success) {
-                document.getElementById('transfer-progress-overlay').classList.add('hidden');
+            const result = await window.transfer.downloadGame({ host, playerName: settings.playerName });
+            if (!result.success && result.error !== 'cancelled') {
+                overlay.classList.add('hidden');
                 handleDownloadError(result.error);
             }
         }
@@ -243,7 +257,6 @@ function setupEventListeners() {
         document.querySelector('.nav-button[data-page="chat"]')?.click();
     });
 
-    // Player Name Editing
     const playerNameInput = getEl('player-name-input');
     getEl('edit-player-name-btn')?.addEventListener('click', () => {
         getEl('player-name-display').classList.add('hidden');
@@ -267,6 +280,8 @@ function setupEventListeners() {
     }));
 
     subscriptions.push(rendererEvents.on('mods:changed', updateHomePageStats));
+    subscriptions.push(rendererEvents.on('settings:changed', checkDashboardVisibility));
+    subscriptions.push(rendererEvents.on('transfer:active-downloads-update', renderHostDashboard));
 }
 
 // --- INIT ---
@@ -280,6 +295,7 @@ export function init() {
     updatePlayerNameVisibility();
     updateHomePageStats();
     checkAndDisplayFirewallWarning();
+    checkDashboardVisibility();
 
     const statusEl = getEl('firewall-status');
     if(statusEl && statusEl.textContent === 'N/A') {
@@ -287,11 +303,10 @@ export function init() {
     }
 
     displayFirewallStatus();
-    firewallCheckInterval = setInterval(displayFirewallStatus, 15000); // Check every 15s
+    firewallCheckInterval = setInterval(displayFirewallStatus, 15000);
     
     setupEventListeners();
     
-    // Trigger an initial update for LAN status
     window.lan.setUsername(playerName);
 }
 

@@ -126,21 +126,22 @@ function setupGlobalEventListeners() {
     window.transfer.onComplete((result) => {
         const completeMessageEl = document.getElementById('transfer-complete-message');
         document.getElementById('transfer-progress-content').classList.add('hidden');
+        document.getElementById('transfer-cancel-btn').classList.add('hidden');
         
         if (result.success) {
             completeMessageEl.className = 'backup-result-message success';
             completeMessageEl.textContent = 'Game download complete! You can now close this window.';
-            document.getElementById('transfer-close-btn').classList.remove('hidden');
         } else {
-            completeMessageEl.textContent = `Download failed: ${result.error}`;
             completeMessageEl.className = 'backup-result-message error';
-            document.getElementById('transfer-close-btn').classList.remove('hidden');
+            completeMessageEl.textContent = `Error: ${result.error}`;
         }
+        document.getElementById('transfer-close-btn').classList.remove('hidden');
     });
 
-    document.getElementById('transfer-restart-btn').addEventListener('click', () => {
-        window.transfer.restartForUpdate();
+    document.getElementById('transfer-cancel-btn').addEventListener('click', () => {
+        window.transfer.cancelDownload();
     });
+
     document.getElementById('transfer-close-btn').addEventListener('click', () => {
         document.getElementById('transfer-progress-overlay').classList.add('hidden');
     });

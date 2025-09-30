@@ -104,14 +104,16 @@
                 <div class="progress-bar-outer">
                     <div id="transfer-progress-bar-inner" class="progress-bar-inner"></div>
                 </div>
-                <div id="transfer-progress-details" class="progress-details" style="height: 1.2em;"></div>
-                <div id="transfer-progress-speed" class="progress-details" style="height: 1.2em;"></div>
+                 <div class="progress-details-container">
+                    <span id="transfer-progress-details" class="progress-details"></span>
+                    <span id="transfer-progress-speed" class="progress-details"></span>
+                </div>
             </div>
         </div>
         <div id="transfer-complete-message" class="backup-result-message" style="margin-top: 20px;"></div>
         <div class="modal-buttons" style="margin-top: 20px;">
-          <button id="transfer-close-btn" class="modal-btn cancel-btn hidden">Close</button>
-          <button id="transfer-restart-btn" class="modal-btn ok-btn hidden">Restart to Update</button>
+          <button id="transfer-cancel-btn" class="modal-btn cancel-btn hidden">Cancel</button>
+          <button id="transfer-close-btn" class="modal-btn ok-btn hidden">Close</button>
         </div>
     </div>
   </div>

@@ -53,7 +53,7 @@ contextBridge.exposeInMainWorld('backup', {
 contextBridge.exposeInMainWorld('transfer', {
     toggleSharing: (enable) => ipcRenderer.invoke('transfer:toggle-sharing', enable),
     downloadGame: (args) => ipcRenderer.invoke('transfer:download-game', args),
-    restartForUpdate: () => ipcRenderer.invoke('transfer:restart-for-update'),
+    cancelDownload: () => ipcRenderer.invoke('transfer:cancel-download'),
     onProgress: (callback) => ipcRenderer.on('transfer:progress', (_e, progress) => callback(progress)),
     onComplete: (callback) => ipcRenderer.on('transfer:complete', (_e, result) => callback(result)),
     onActiveDownloadsUpdate: (callback) => ipcRenderer.on('transfer:active-downloads-update', (_e, downloaders) => callback(downloaders)),

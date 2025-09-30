@@ -110,6 +110,50 @@
 .home-player-os-name { font-size: 0.8rem; color: var(--fg-med); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .home-player-item.is-self .home-player-name { color: var(--primary); }
 
+/* --- HOST DASHBOARD (HOME) --- */
+#host-dashboard {
+    width: 100%;
+    max-width: 600px;
+    margin-bottom: 20px;
+    padding: 20px;
+    display: flex; /* controlled by JS */
+    flex-direction: column;
+    gap: 15px;
+    background: rgba(0, 255, 127, 0.05);
+    border: 1px solid rgba(0, 255, 127, 0.2);
+    border-radius: 8px;
+    animation: fadeIn 0.5s ease;
+}
+.host-dashboard-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border-glass);
+    padding-bottom: 10px;
+}
+.host-dashboard-header i { font-size: 1.5rem; color: var(--primary); }
+.host-dashboard-header h3 { margin: 0; font-size: 1.2rem; color: var(--primary); text-shadow: 0 0 8px var(--primary-glow); }
+.downloader-list { display: flex; flex-direction: column; gap: 12px; max-height: 250px; overflow-y: auto; padding-right: 10px;}
+.downloader-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 12px;
+    border-radius: 6px;
+}
+.downloader-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+.downloader-name { font-weight: bold; }
+.downloader-details { font-size: 0.8rem; color: var(--fg-med); font-family: monospace; }
+.downloader-progress-percent { font-size: 1rem; font-weight: bold; color: var(--primary); font-family: var(--font-heading); }
+.downloader-progress-bar { height: 6px; background-color: rgba(0, 0, 0, 0.3); border-radius: 3px; overflow: hidden; }
+.downloader-progress-bar-inner { width: 0%; height: 100%; background-color: var(--primary); border-radius: 3px; transition: width 0.3s ease; }
+
 
 /* --- PAGE: MODS --- */
 .mod-set-manager {
@@ -204,17 +248,19 @@
 .progress-info { display: flex; justify-content: space-between; font-size: 0.9rem; }
 .progress-bar-outer { width: 100%; height: 12px; background-color: rgba(0,0,0,0.3); border-radius: 6px; overflow: hidden; border: 1px solid var(--border-glass); }
 .progress-bar-inner { width: 0%; height: 100%; background-image: linear-gradient(45deg, var(--primary), var(--primary-hover)); border-radius: 6px; transition: width 0.2s ease-out; }
-#progress-details,
-#transfer-progress-details { 
-    font-size: 0.8rem; color: var(--fg-med); text-align: left; 
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    flex-grow: 1;
-}
+
 .progress-details-container {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
     gap: 15px;
+    height: 1.2em;
+}
+#progress-details,
+#transfer-progress-details { 
+    font-size: 0.8rem; color: var(--fg-med); text-align: left; 
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    flex-grow: 1;
 }
 #transfer-progress-speed {
     font-size: 0.8rem;
@@ -226,19 +272,6 @@
 .backup-result-message { text-align: center; font-weight: bold; height: 1.2em; transition: color 0.3s; padding-top: 5px; }
 .backup-result-message.success { color: var(--primary); }
 .backup-result-message.error { color: var(--error); }
-.host-status-panel {
-    background: rgba(16, 16, 16, 0.5); border: 1px solid var(--border-glass); border-radius: 8px;
-    padding: 20px; display: flex; flex-direction: column; gap: 10px;
-}
-.host-status-header { display: flex; align-items: center; gap: 10px; }
-.host-status-header i { color: var(--primary); }
-.host-status-header h3 { margin: 0; font-size: 1.1rem; }
-#host-downloader-list {
-    list-style: none; padding-left: 20px; margin: 0;
-    display: flex; flex-direction: column; gap: 5px;
-}
-#host-downloader-list li { font-family: monospace; color: var(--fg-med); }
-
 
 /* --- PAGE: DEVELOPER --- */
 .config-editor-container, .registry-editor-container, .about-page-editor { display: flex; flex-direction: column; gap: 15px; }

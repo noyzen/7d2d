@@ -240,7 +240,12 @@ input:checked + .slider:before { transform: translateX(22px); }
 
 /* --- COMPONENTS: CUSTOM MODAL --- */
 .modal-overlay {
-  position: fixed; inset: 0; z-index: 6000;
+  position: fixed;
+  top: 32px; /* Height of the titlebar */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 6000;
   background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   display: flex; align-items: center; justify-content: center;
