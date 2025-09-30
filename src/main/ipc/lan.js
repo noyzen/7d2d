@@ -28,14 +28,23 @@ const CHAT_HISTORY_PATH = path.join(LAUNCHER_FILES_PATH, 'chathistory.json');
 
 function getLocalIp() {
     const networkInterfaces = os.networkInterfaces();
+    // First pass for prioritized private ranges
     for (const interfaceName in networkInterfaces) {
         const networkInterface = networkInterfaces[interfaceName];
         for (const interfaceInfo of networkInterface) {
             if (interfaceInfo.family === 'IPv4' && !interfaceInfo.internal) {
-                // Prioritize common private network ranges
                 if (interfaceInfo.address.startsWith('192.168.') || interfaceInfo.address.startsWith('10.') || /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(interfaceInfo.address)) {
                     return interfaceInfo.address;
                 }
+            }
+        }
+    }
+    // Second pass as a fallback for any non-internal IPv4
+    for (const interfaceName in networkInterfaces) {
+        const networkInterface = networkInterfaces[interfaceName];
+        for (const interfaceInfo of networkInterface) {
+            if (interfaceInfo.family === 'IPv4' && !interfaceInfo.internal) {
+                return interfaceInfo.address;
             }
         }
     }
@@ -258,7 +267,7 @@ exports.shutdown = () => {
 
 exports.setUsername = (username) => {
   currentUsername = username;
-  updatePeer(INSTANCE_ID, currentUsername, OS_USERNAME, 'local');
+  updatePeer(INSTANCE_ID, currentUsername, OS_USERNAME, localIpAddress || 'local');
   sendPeerUpdate();
   broadcastPacket('heartbeat');
 };
