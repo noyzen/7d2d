@@ -81,7 +81,6 @@ function handleGetInitialData() {
         }
 
         const bgmFiles = files.filter(f => 
-          f.toLowerCase().startsWith('bgm') && 
           ['.mp3', '.wav'].includes(path.extname(f).toLowerCase())
         );
         if (bgmFiles.length > 0) {

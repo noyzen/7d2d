@@ -22,7 +22,7 @@ function cleanTrackName(uri) {
     try {
         const decodedUri = decodeURIComponent(uri);
         const fileName = decodedUri.split('/').pop();
-        return fileName.replace(/\.(mp3|wav)$/i, '').replace(/^bgm/i, '').trim();
+        return fileName.replace(/\.(mp3|wav)$/i, '').trim();
     } catch (e) {
         return "Unknown Track";
     }
