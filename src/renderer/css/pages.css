@@ -294,12 +294,25 @@
 
 .mod-card.enabled { border-color: var(--primary); background: rgba(0, 255, 127, 0.1); }
 .mod-card.enabled::before {
-    content: '\f00c'; font-family: "Font Awesome 6 Free"; font-weight: 900;
-    position: absolute; top: 50%; transform: translateY(-50%); right: 15px;
-    color: var(--primary); font-size: 1.2rem; text-shadow: 0 0 8px var(--primary-glow);
+    content: '\f00c';
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-size: 1.2rem;
+    text-shadow: 0 0 8px var(--primary-glow);
     transition: transform 0.2s ease;
 }
-.mod-card:hover.enabled::before { transform: translateY(-50%) scale(1.1); }
+.mod-card:hover.enabled::before {
+    transform: scale(1.1);
+}
 
 .mod-card.in-set::after {
     content: '\f005'; font-family: "Font Awesome 6 Free"; font-weight: 900;
@@ -308,7 +321,7 @@
 }
 
 .mod-info {
-    overflow: hidden; padding-right: 40px; min-width: 0;
+    overflow: hidden; padding-right: 50px; min-width: 0;
     display: flex; flex-direction: column; gap: 4px;
 }
 .mod-title {
@@ -558,6 +571,7 @@
   /* --- MODS PAGE --- */
   .mods-layout {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
     gap: 20px;
   }
   .mod-sets-panel {
