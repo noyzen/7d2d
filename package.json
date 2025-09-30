@@ -12,7 +12,7 @@
   },
   "build": {
     "appId": "com.noyzen.7d2dlauncher",
-    "productName": "7D2D Launcher",
+    "productName": "7d2dLauncher",
     "files": [
       "src/**/*",
       "fonts/**/*",
