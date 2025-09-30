@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, nativeTheme, ipcMain, globalShortcut } = require('electron');
+const { app, BrowserWindow, Menu, nativeTheme, ipcMain, globalShortcut, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -160,6 +160,39 @@ ipcMain.handle('launcher:start-game', async (_, settings) => {
   if (!fs.existsSync(GAME_EXE_PATH)) {
     return { error: `7DaysToDie.exe not found in the launcher directory!` };
   }
+
+  // --- Apply config edits before launching ---
+  const { playerName, configEditorRules } = settings;
+  if (playerName && configEditorRules && configEditorRules.length > 0) {
+    try {
+      for (const rule of configEditorRules) {
+        if (!rule.filePath || !rule.lineNumber || !rule.lineTemplate) {
+          console.warn('Skipping incomplete config rule:', rule);
+          continue;
+        }
+        if (!fs.existsSync(rule.filePath)) {
+          throw new Error(`Config file not found: ${rule.filePath}`);
+        }
+
+        const fileContent = fs.readFileSync(rule.filePath, 'utf8');
+        const lines = fileContent.split(/\r?\n/);
+        
+        const lineIndex = rule.lineNumber - 1;
+        if (lineIndex < 0 || lineIndex >= lines.length) {
+          throw new Error(`Line number ${rule.lineNumber} is out of bounds for file ${rule.filePath}`);
+        }
+
+        const newContent = rule.lineTemplate.replace(/##7d2dlauncher-username##/g, playerName);
+        lines[lineIndex] = newContent;
+
+        fs.writeFileSync(rule.filePath, lines.join('\n'), 'utf8');
+      }
+    } catch (e) {
+      console.error("Failed to apply config edits:", e);
+      return { error: `Failed to update config: ${e.message}` };
+    }
+  }
+
   try {
     const child = spawn(GAME_EXE_PATH, [], {
       detached: true,
@@ -195,6 +228,18 @@ ipcMain.handle('launcher:start-game', async (_, settings) => {
     gameProcess = null;
     return { error: e.message };
   }
+});
+
+// Select config file
+ipcMain.handle('launcher:select-file', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    title: 'Select Configuration File'
+  });
+  if (!canceled && filePaths.length > 0) {
+    return { success: true, filePath: filePaths[0] };
+  }
+  return { success: false };
 });
 
 

@@ -48,6 +48,10 @@
         <div class="home-content">
           <h1>Welcome Back, Survivor</h1>
           <p>Your wasteland adventure awaits. Manage your mods, tweak settings, and dive back into the apocalypse.</p>
+          <div class="player-name-container">
+            <label for="player-name-input">Player Name</label>
+            <input type="text" id="player-name-input" placeholder="Enter your name...">
+          </div>
           <button id="start-game-btn" class="start-button">
             <i class="fa-solid fa-play"></i>
             <span>START GAME</span>
@@ -105,6 +109,19 @@
               </label>
             </div>
           </div>
+        </div>
+        <div class="page-header" style="margin-top: 30px; border-top: 1px solid var(--border-glass); padding-top: 30px;">
+            <h1>Player Name Config Editor</h1>
+            <p>Define files and lines to update with your player name when the game starts.</p>
+        </div>
+        <div class="config-editor-container">
+            <div id="config-rules-list">
+                <!-- Rules will be dynamically inserted here -->
+            </div>
+            <button id="add-config-rule-btn" class="add-rule-button">
+                <i class="fa-solid fa-plus"></i>
+                <span>Add New Rule</span>
+            </button>
         </div>
       </div>
     </main>

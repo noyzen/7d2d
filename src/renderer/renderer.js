@@ -2,6 +2,8 @@
 let settings = {
   playMusic: true,
   exitOnLaunch: false,
+  playerName: 'Survivor',
+  configEditorRules: [],
 };
 
 // --- DOM ELEMENTS ---
@@ -23,6 +25,7 @@ const pages = document.querySelectorAll('.page');
 // Home Page
 const startGameBtn = document.getElementById('start-game-btn');
 const startGameError = document.getElementById('start-game-error');
+const playerNameInput = document.getElementById('player-name-input');
 
 // Mods Page
 const enabledModsList = document.getElementById('enabled-mods-list');
@@ -31,6 +34,8 @@ const disabledModsList = document.getElementById('disabled-mods-list');
 // Settings Page
 const musicToggle = document.getElementById('setting-music-toggle');
 const exitOnLaunchToggle = document.getElementById('setting-exit-toggle');
+const configRulesList = document.getElementById('config-rules-list');
+const addConfigRuleBtn = document.getElementById('add-config-rule-btn');
 
 
 // --- WINDOW CONTROLS ---
@@ -66,6 +71,8 @@ navButtons.forEach(button => {
     
     if (pageId === 'page-mods') {
       loadMods();
+    } else if (pageId === 'page-settings') {
+      renderConfigEditorRules();
     }
   });
 });
@@ -74,6 +81,8 @@ navButtons.forEach(button => {
 function applySettings() {
   musicToggle.checked = settings.playMusic ?? true;
   exitOnLaunchToggle.checked = settings.exitOnLaunch ?? false;
+  playerNameInput.value = settings.playerName || 'Survivor';
+
   if (settings.playMusic) {
     bgm.play().catch(e => console.error("Audio playback failed:", e));
   } else {
@@ -94,6 +103,11 @@ musicToggle.addEventListener('change', () => {
 exitOnLaunchToggle.addEventListener('change', () => {
   settings.exitOnLaunch = exitOnLaunchToggle.checked;
   saveSettings();
+});
+
+playerNameInput.addEventListener('change', () => {
+    settings.playerName = playerNameInput.value;
+    saveSettings();
 });
 
 
@@ -176,6 +190,102 @@ async function loadMods() {
     }
 }
 
+// Config Editor
+function createConfigRuleElement(rule) {
+    const ruleEl = document.createElement('div');
+    ruleEl.className = 'config-rule-card';
+    ruleEl.dataset.id = rule.id;
+
+    ruleEl.innerHTML = `
+        <div class="config-rule-header">
+            <h3>Rule #${String(rule.id).slice(-4)}</h3>
+            <button class="remove-rule-btn" title="Remove Rule"><i class="fa-solid fa-trash-can"></i></button>
+        </div>
+        <div class="config-rule-body">
+            <div class="config-field">
+                <label for="file-path-${rule.id}">File Path</label>
+                <div class="config-field-row">
+                    <input type="text" id="file-path-${rule.id}" value="${rule.filePath || ''}" placeholder="Select a file..." readonly>
+                    <button class="browse-btn">Browse</button>
+                </div>
+            </div>
+            <div class="config-field">
+                <label for="line-num-${rule.id}">Line Number</label>
+                <input type="number" id="line-num-${rule.id}" value="${rule.lineNumber || ''}" min="1" placeholder="e.g., 5">
+            </div>
+            <div class="config-field">
+                <label for="line-template-${rule.id}">Line Template (use ##7d2dlauncher-username##)</label>
+                <input type="text" id="line-template-${rule.id}" value="${rule.lineTemplate || ''}" placeholder="e.g., PlayerName = ##7d2dlauncher-username##">
+            </div>
+        </div>
+    `;
+
+    // Event Listeners
+    const filePathInput = ruleEl.querySelector(`#file-path-${rule.id}`);
+    const lineNumInput = ruleEl.querySelector(`#line-num-${rule.id}`);
+    const lineTemplateInput = ruleEl.querySelector(`#line-template-${rule.id}`);
+    const browseBtn = ruleEl.querySelector('.browse-btn');
+    const removeBtn = ruleEl.querySelector('.remove-rule-btn');
+
+    const updateRule = () => {
+        const ruleIndex = settings.configEditorRules.findIndex(r => r.id === rule.id);
+        if (ruleIndex > -1) {
+            const lineNum = parseInt(lineNumInput.value, 10);
+            settings.configEditorRules[ruleIndex] = {
+                ...settings.configEditorRules[ruleIndex],
+                filePath: filePathInput.value,
+                lineNumber: isNaN(lineNum) ? null : lineNum,
+                lineTemplate: lineTemplateInput.value,
+            };
+            saveSettings();
+        }
+    };
+    
+    browseBtn.addEventListener('click', async () => {
+        const result = await window.launcher.selectFile();
+        if (result.success) {
+            filePathInput.value = result.filePath;
+            updateRule();
+        }
+    });
+
+    lineNumInput.addEventListener('change', updateRule);
+    lineTemplateInput.addEventListener('change', updateRule);
+
+    removeBtn.addEventListener('click', () => {
+        settings.configEditorRules = settings.configEditorRules.filter(r => r.id !== rule.id);
+        saveSettings();
+        renderConfigEditorRules();
+    });
+
+    return ruleEl;
+}
+
+function renderConfigEditorRules() {
+    configRulesList.innerHTML = '';
+    if (settings.configEditorRules && settings.configEditorRules.length > 0) {
+        settings.configEditorRules.forEach(rule => {
+            configRulesList.appendChild(createConfigRuleElement(rule));
+        });
+    } else {
+        configRulesList.innerHTML = '<p class="no-mods">No configuration rules added yet.</p>';
+    }
+}
+
+addConfigRuleBtn.addEventListener('click', () => {
+    const newRule = {
+        id: Date.now(),
+        filePath: '',
+        lineNumber: null,
+        lineTemplate: '',
+    };
+    if (!settings.configEditorRules) {
+      settings.configEditorRules = [];
+    }
+    settings.configEditorRules.push(newRule);
+    saveSettings();
+    renderConfigEditorRules();
+});
 
 // --- INITIALIZATION ---
 async function init() {

@@ -141,8 +141,41 @@ p { color: var(--fg-med); line-height: 1.6; }
 
 /* Home Page */
 #page-home { align-items: center; justify-content: center; text-align: center; }
-.home-content { display: flex; flex-direction: column; align-items: center; gap: 20px; max-width: 600px; }
+.home-content { display: flex; flex-direction: column; align-items: center; gap: 20px; max-width: 600px; width: 100%;}
 .home-content h1 { font-size: 2.8rem; text-shadow: 0 0 15px rgba(255,255,255,0.3); }
+
+.player-name-container {
+  width: 100%;
+  max-width: 400px;
+  margin-bottom: 15px;
+  text-align: left;
+}
+.player-name-container label {
+  display: block;
+  margin-bottom: 8px;
+  font-family: var(--font-heading);
+  color: var(--fg-light);
+  font-size: 0.9rem;
+  text-align: center;
+}
+#player-name-input {
+  width: 100%;
+  padding: 12px 15px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--border-glass);
+  border-radius: 6px;
+  color: var(--fg-light);
+  font-size: 1rem;
+  font-family: var(--font-body);
+  transition: all 0.3s ease;
+  text-align: center;
+}
+#player-name-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 10px var(--primary-glow);
+}
+
 
 @keyframes pulse {
   0% { box-shadow: 0 0 15px var(--primary-glow), 0 0 25px var(--primary-glow); }
@@ -198,6 +231,124 @@ p { color: var(--fg-med); line-height: 1.6; }
 .setting-item { display: flex; justify-content: space-between; align-items: center; }
 .setting-label h3 { margin: 0 0 5px 0; }
 .setting-label p { margin: 0; font-size: 0.9rem; }
+
+/* Config Editor */
+.config-editor-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#config-rules-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.config-rule-card {
+    background: rgba(26, 26, 26, 0.7);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border-glass);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    animation: fadeIn 0.3s ease;
+}
+
+.config-rule-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.config-rule-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--primary);
+}
+
+.config-rule-header .remove-rule-btn {
+    background: transparent;
+    border: none;
+    color: var(--error);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 5px;
+    line-height: 1;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+.config-rule-header .remove-rule-btn:hover {
+    background-color: rgba(255, 77, 77, 0.2);
+}
+
+.config-rule-body {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.config-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.config-field-row {
+    display: flex;
+    gap: 10px;
+}
+
+.config-field label {
+    font-size: 0.9rem;
+    color: var(--fg-med);
+}
+
+.config-field input[type="text"],
+.config-field input[type="number"] {
+    flex-grow: 1;
+    padding: 8px 10px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border-glass);
+    border-radius: 4px;
+    color: var(--fg-light);
+    font-size: 0.9rem;
+}
+
+.config-field input[type="text"]:focus,
+.config-field input[type="number"]:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.browse-btn, .add-rule-button {
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    color: var(--fg-light);
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-glass);
+    border-radius: 4px;
+    padding: 8px 15px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.browse-btn:hover, .add-rule-button:hover {
+    background-color: rgba(0, 255, 127, 0.2);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.add-rule-button {
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    padding: 10px 20px;
+    margin-top: 10px;
+}
 
 
 /* --- GENERIC UI CONTROLS (SWITCH) --- */

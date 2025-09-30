@@ -19,5 +19,6 @@ contextBridge.exposeInMainWorld('launcher', {
   startGame: (settings) => ipcRenderer.invoke('launcher:start-game', settings),
   getMods: () => ipcRenderer.invoke('launcher:get-mods'),
   toggleMod: (args) => ipcRenderer.invoke('launcher:toggle-mod', args),
+  selectFile: () => ipcRenderer.invoke('launcher:select-file'),
   onGameClosed: (callback) => ipcRenderer.on('game:closed', () => callback()),
 });
