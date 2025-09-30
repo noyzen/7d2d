@@ -31,6 +31,9 @@ const DISABLED_MODS_PATH = path.join(CWD, 'DisabledMods');
 const GAME_EXE_PATH = path.join(CWD, '7DaysToDie.exe');
 const SOURCE_DATA_PATH = path.join(app.getPath('appData'), '7DaysToDie');
 const BACKUP_DATA_PATH = path.join(CWD, 'BackupData');
+const REGISTRY_BACKUP_FILENAME = 'registry_backup.reg';
+const REGISTRY_BACKUP_PATH = path.join(BACKUP_DATA_PATH, REGISTRY_BACKUP_FILENAME);
+const REGISTRY_KEY_PATH = 'HKEY_CURRENT_USER\\SOFTWARE\\The Fun Pimps\\7 Days To Die';
 
 
 // --- LAN CHAT CONSTANTS ---
@@ -683,11 +686,14 @@ ipcMain.handle('backup:get-status', async () => {
     const sourceInfo = await getFolderSize(SOURCE_DATA_PATH);
     const backupInfo = await getFolderSize(BACKUP_DATA_PATH);
     const freeSpace = await getDriveFreeSpace(CWD);
+    const registryBackupExists = fs.existsSync(REGISTRY_BACKUP_PATH);
+
     return {
       success: true,
       source: sourceInfo,
       backup: backupInfo,
-      freeSpace
+      freeSpace,
+      registryBackupExists
     };
   } catch (e) {
     console.error('Failed to get backup status:', e);
@@ -744,6 +750,61 @@ ipcMain.handle('backup:start-restore', async () => {
         return { success: true };
     } catch (e) {
         console.error('Restore failed:', e);
+        return { success: false, error: e.message };
+    }
+});
+
+// Registry Backup/Restore (Windows Only)
+function executeCommand(command) {
+    return new Promise((resolve, reject) => {
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+            if (stderr) {
+                // reg export sometimes prints to stderr on success, so we check for specific error keywords.
+                const errorKeywords = ['ERROR:', 'Access is denied'];
+                if (errorKeywords.some(keyword => stderr.includes(keyword))) {
+                    reject(new Error(stderr));
+                    return;
+                }
+            }
+            resolve(stdout);
+        });
+    });
+}
+
+ipcMain.handle('backup:start-registry-backup', async () => {
+    if (process.platform !== 'win32') {
+        return { success: false, error: 'Registry operations are only supported on Windows.' };
+    }
+    try {
+        if (!fs.existsSync(BACKUP_DATA_PATH)) {
+            await fs.promises.mkdir(BACKUP_DATA_PATH, { recursive: true });
+        }
+        const command = `reg export "${REGISTRY_KEY_PATH}" "${REGISTRY_BACKUP_PATH}" /y`;
+        await executeCommand(command);
+        return { success: true };
+    } catch (e) {
+        console.error('Registry backup failed:', e);
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('backup:start-registry-restore', async () => {
+    if (process.platform !== 'win32') {
+        return { success: false, error: 'Registry operations are only supported on Windows.' };
+    }
+    try {
+        if (!fs.existsSync(REGISTRY_BACKUP_PATH)) {
+            throw new Error('Registry backup file not found. Cannot restore.');
+        }
+        const command = `reg import "${REGISTRY_BACKUP_PATH}"`;
+        await executeCommand(command);
+        return { success: true };
+    } catch (e) {
+        console.error('Registry restore failed:', e);
         return { success: false, error: e.message };
     }
 });

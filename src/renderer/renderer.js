@@ -118,6 +118,9 @@ const progressPercentage = document.getElementById('progress-percentage');
 const progressBarInner = document.getElementById('progress-bar-inner');
 const progressDetails = document.getElementById('progress-details');
 const backupResultMessage = document.getElementById('backup-result-message');
+const registryBackupWrapper = document.getElementById('registry-backup-wrapper');
+const backupRegistryBtn = document.getElementById('backup-registry-btn');
+const restoreRegistryBtn = document.getElementById('restore-registry-btn');
 
 
 // Developer Page
@@ -407,7 +410,7 @@ function renderAboutPage() {
 
 // --- Backup & Restore ---
 function formatBytes(bytes, decimals = 2) {
-    if (bytes === 0) return '0 Bytes';
+    if (!bytes || bytes === 0) return '0 Bytes';
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
     const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
@@ -422,7 +425,7 @@ async function renderBackupStatus() {
         return;
     }
 
-    const { source, backup, freeSpace } = status;
+    const { source, backup, freeSpace, registryBackupExists } = status;
     const sourceDate = source.mtime ? new Date(source.mtime).toLocaleString() : 'N/A';
     const backupDate = backup.mtime ? new Date(backup.mtime).toLocaleString() : 'N/A';
 
@@ -449,6 +452,10 @@ async function renderBackupStatus() {
 
     restoreBtn.disabled = backup.totalSize === 0;
     backupBtn.disabled = source.totalSize === 0;
+    
+    if (window.appInfo.platform === 'win32') {
+        restoreRegistryBtn.disabled = !registryBackupExists;
+    }
 }
 
 function showOperationResult(message, isError = false) {
@@ -465,7 +472,7 @@ backupBtn.addEventListener('click', async () => {
         isBackupOperationInProgress = true;
         backupControls.classList.add('hidden');
         backupProgressContainer.classList.remove('hidden');
-        progressLabel.textContent = 'Backing up...';
+        progressLabel.textContent = 'Backing up files...';
         showOperationResult('');
 
         const result = await window.backup.startBackup();
@@ -475,9 +482,9 @@ backupBtn.addEventListener('click', async () => {
         backupProgressContainer.classList.add('hidden');
 
         if (result.success) {
-            showOperationResult('Backup completed successfully!', false);
+            showOperationResult('File backup completed successfully!', false);
         } else {
-            showOperationResult(`Backup failed: ${result.error}`, true);
+            showOperationResult(`File backup failed: ${result.error}`, true);
         }
         renderBackupStatus();
     }
@@ -489,7 +496,7 @@ restoreBtn.addEventListener('click', async () => {
         isBackupOperationInProgress = true;
         backupControls.classList.add('hidden');
         backupProgressContainer.classList.remove('hidden');
-        progressLabel.textContent = 'Restoring...';
+        progressLabel.textContent = 'Restoring files...';
         showOperationResult('');
         
         const result = await window.backup.startRestore();
@@ -499,13 +506,42 @@ restoreBtn.addEventListener('click', async () => {
         backupProgressContainer.classList.add('hidden');
 
         if (result.success) {
-            showOperationResult('Restore completed successfully!', false);
+            showOperationResult('File restore completed successfully!', false);
         } else {
-            showOperationResult(`Restore failed: ${result.error}`, true);
+            showOperationResult(`File restore failed: ${result.error}`, true);
         }
         renderBackupStatus();
     }
 });
+
+backupRegistryBtn.addEventListener('click', async () => {
+    if (isBackupOperationInProgress) return;
+    if (confirm('This will overwrite any existing registry backup. Are you sure?')) {
+        showOperationResult('Backing up registry...');
+        const result = await window.backup.startRegistryBackup();
+        if (result.success) {
+            showOperationResult('Registry backup successful!', false);
+        } else {
+            showOperationResult(`Registry backup failed: ${result.error}`, true);
+        }
+        renderBackupStatus();
+    }
+});
+
+restoreRegistryBtn.addEventListener('click', async () => {
+    if (isBackupOperationInProgress) return;
+    if (confirm('DANGER: This will overwrite your current registry settings for the game with the backup. This can cause issues if not done correctly. Are you sure?')) {
+        showOperationResult('Restoring registry...');
+        const result = await window.backup.startRegistryRestore();
+        if (result.success) {
+            showOperationResult('Registry restore successful!', false);
+        } else {
+            showOperationResult(`Registry restore failed: ${result.error}`, true);
+        }
+        renderBackupStatus();
+    }
+});
+
 
 window.backup.onProgress((progress) => {
     const { totalSize, copiedSize, fileCount, filesCopied, currentFile } = progress;
@@ -919,6 +955,8 @@ async function init() {
 
   if (window.appInfo.platform !== 'win32') {
     registryEditorWrapper.style.display = 'none';
+  } else {
+    registryBackupWrapper.style.display = 'block';
   }
 
   const data = await window.launcher.getInitialData();

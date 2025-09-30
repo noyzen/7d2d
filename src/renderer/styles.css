@@ -474,9 +474,16 @@ p { color: var(--fg-med); line-height: 1.6; }
   font-weight: bold;
   height: 1.2em;
   transition: color 0.3s;
+  padding-top: 5px;
 }
 .backup-result-message.success { color: var(--primary); }
 .backup-result-message.error { color: var(--error); }
+
+.sub-section-divider {
+  height: 1px;
+  background-color: var(--border-glass);
+  margin: 10px 0;
+}
 
 
 /* Config & Registry Editors (Developer Page) */

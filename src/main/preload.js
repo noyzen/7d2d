@@ -36,6 +36,8 @@ contextBridge.exposeInMainWorld('backup', {
   getStatus: () => ipcRenderer.invoke('backup:get-status'),
   startBackup: () => ipcRenderer.invoke('backup:start-backup'),
   startRestore: () => ipcRenderer.invoke('backup:start-restore'),
+  startRegistryBackup: () => ipcRenderer.invoke('backup:start-registry-backup'),
+  startRegistryRestore: () => ipcRenderer.invoke('backup:start-registry-restore'),
   onProgress: (callback) => ipcRenderer.on('backup:progress', (_e, progress) => callback(progress)),
   onComplete: (callback) => ipcRenderer.on('backup:complete', (_e, result) => callback(result))
 });
