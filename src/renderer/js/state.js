@@ -2,6 +2,7 @@ export let settings = {
   playMusic: true,
   exitOnLaunch: true,
   playerName: 'Survivor',
+  modSets: [],
   configEditorRules: [],
   registryEditorRules: [],
   launchParameters: {},
@@ -101,6 +102,10 @@ export function initDefaultSettings() {
     }
     if (!settings.launchParameters) {
         settings.launchParameters = {};
+        changed = true;
+    }
+    if (!settings.modSets) {
+        settings.modSets = [];
         changed = true;
     }
     for (const key in LAUNCH_PARAMETERS_CONFIG) {

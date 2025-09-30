@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld('launcher', {
 contextBridge.exposeInMainWorld('mods', {
     get: () => ipcRenderer.invoke('mods:get'),
     toggle: (args) => ipcRenderer.invoke('mods:toggle', args),
+    applyModSet: (args) => ipcRenderer.invoke('mods:apply-mod-set', args),
 });
 
 contextBridge.exposeInMainWorld('lan', {

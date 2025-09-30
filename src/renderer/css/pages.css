@@ -99,17 +99,57 @@
 
 
 /* --- PAGE: MODS --- */
-.mod-lists { display: flex; flex-direction: column; gap: 30px; }
-.mod-list-container h2 { display: flex; align-items: center; gap: 10px; color: var(--fg-light); border-bottom: 1px solid var(--border-glass); padding-bottom: 10px; margin-bottom: 15px; }
-.mod-list-container h2 .fa-check-circle { color: var(--primary); }
-.mod-list-container h2 .fa-times-circle { color: var(--error); }
-.mod-list { display: flex; flex-direction: column; gap: 15px; }
+.mod-set-manager {
+    background: rgba(16, 16, 16, 0.5); border: 1px solid var(--border-glass);
+    border-radius: 8px; padding: 20px; display: flex;
+    flex-wrap: wrap; align-items: center; gap: 15px; margin-bottom: 25px;
+}
+.mod-set-manager label { font-weight: bold; }
+.mod-set-manager select {
+    flex-grow: 1; padding: 8px 10px; background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border-glass); border-radius: 4px;
+    color: var(--fg-light); font-size: 0.9rem; font-family: var(--font-body);
+}
+.mod-set-manager button {
+    font-family: var(--font-body); font-size: 0.9rem; color: var(--fg-light);
+    background-color: rgba(255, 255, 255, 0.1); border: 1px solid var(--border-glass);
+    border-radius: 4px; padding: 8px 15px; cursor: pointer;
+    transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;
+}
+.mod-set-manager button:hover:not(:disabled) { background-color: rgba(0, 255, 127, 0.2); border-color: var(--primary); color: var(--primary); }
+.mod-set-manager button.apply-btn:hover:not(:disabled) { background-color: var(--primary); color: #0a0a0a; box-shadow: 0 0 10px var(--primary-glow); }
+.mod-set-manager button.delete-btn:hover:not(:disabled) { background-color: rgba(255, 77, 77, 0.2); border-color: var(--error); color: var(--error); }
+.mod-set-manager button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.mod-controls-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 15px; }
+.mod-tabs { display: flex; gap: 5px; }
+.mod-tab {
+    padding: 10px 20px; border: none; background-color: transparent;
+    color: var(--fg-med); font-size: 1rem; font-family: var(--font-heading);
+    cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s ease;
+}
+.mod-tab:hover { color: var(--fg-light); }
+.mod-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+.mod-search-wrapper { position: relative; }
+.mod-search-wrapper i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--fg-med); }
+#mod-search-input {
+    padding: 8px 12px 8px 35px; background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border-glass); border-radius: 20px;
+    color: var(--fg-light); width: 250px;
+}
+#mod-search-input:focus { outline: none; border-color: var(--primary); }
+
+.mod-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 15px; }
 .mod-card { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: rgba(26, 26, 26, 0.7); transition: transform 0.2s; }
 .mod-card:hover { transform: translateY(-3px); }
-.mod-info h3 { margin: 0; }
-.mod-version { font-size: 0.8rem; color: var(--fg-med); font-family: var(--font-body); font-weight: normal; }
+.mod-info { overflow: hidden; padding-right: 15px; }
+.mod-info h3 { margin: 0; display: flex; align-items: center; gap: 8px; }
+.mod-version { font-size: 0.8rem; color: var(--fg-med); font-family: var(--font-body); font-weight: normal; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; }
 .mod-author { font-size: 0.9rem; color: var(--primary); margin: 5px 0; }
-.mod-desc { font-size: 0.9rem; margin: 0; color: var(--fg-med); }
+.mod-desc { font-size: 0.9rem; margin: 0; color: var(--fg-med); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mod-card.invalid { border-left: 4px solid var(--error); }
+.mod-card.invalid h3 { color: var(--error); }
+.mod-card.invalid .mod-author { color: var(--fg-med); }
 
 /* --- PAGE: SETTINGS --- */
 .settings-container { display: flex; flex-direction: column; gap: 15px; max-width: 700px; }

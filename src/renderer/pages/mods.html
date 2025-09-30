@@ -1,16 +1,30 @@
 <div class="page active" id="page-mods">
     <div class="page-header">
       <h1>Mod Manager</h1>
-      <p>Enable or disable mods by toggling the switch.</p>
+      <p>Enable mods, create, and apply mod sets for different gameplay experiences.</p>
     </div>
-    <div class="mod-lists">
-      <div class="mod-list-container">
-        <h2><i class="fa-solid fa-check-circle"></i> Enabled Mods</h2>
-        <div id="enabled-mods-list" class="mod-list"></div>
+
+    <div class="mod-set-manager">
+        <label for="mod-set-select">Mod Sets:</label>
+        <select id="mod-set-select"></select>
+        <button id="apply-mod-set-btn" class="apply-btn" disabled><i class="fa-solid fa-check"></i> Apply Selected</button>
+        <button id="save-mod-set-btn"><i class="fa-solid fa-save"></i> Save Current as Set</button>
+        <button id="delete-mod-set-btn" class="delete-btn" disabled><i class="fa-solid fa-trash-can"></i> Delete Selected</button>
+    </div>
+
+    <div class="mod-controls-header">
+      <div class="mod-tabs">
+        <button id="enabled-tab" class="mod-tab active">Enabled</button>
+        <button id="disabled-tab" class="mod-tab">Disabled</button>
       </div>
-      <div class="mod-list-container">
-        <h2><i class="fa-solid fa-times-circle"></i> Disabled Mods</h2>
-        <div id="disabled-mods-list" class="mod-list"></div>
+      <div class="mod-search-wrapper">
+        <i class="fa-solid fa-search"></i>
+        <input type="search" id="mod-search-input" placeholder="Search mods...">
       </div>
+    </div>
+    
+    <div id="mod-list" class="mod-list">
+      <!-- Mod cards will be dynamically inserted here -->
+      <div class="loading-spinner"></div>
     </div>
 </div>
