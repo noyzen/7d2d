@@ -115,17 +115,64 @@ async function applyRegistryEdits(playerName, registryEditorRules) {
 
 function buildLaunchArgs(launchParameters) {
     const gameArgs = [];
-    const LAUNCH_PARAM_TYPES = { 'AllowCrossplay': 'bool', 'AllowJoinConfigModded': 'bool', 'LoadSaveGame': 'bool', 'LocalizationChecks': 'bool', 'NoXInput': 'bool', 'SkipNewsScreen': 'bool', 'PlayerPrefsFile': 'bool', 'DebugNet': 'object', 'DebugPackages': 'object', 'ExportCustomAtlases': 'object', 'NoEAC': 'object', 'NoGameSense': 'object', 'NoLiteNetLib': 'object', 'NoRakNet': 'object', 'NoUNet': 'object', 'Quick-Continue': 'object', 'SkipIntro': 'object', 'DisableNativeInput': 'object', 'Submission': 'object', 'CrossPlatform': 'string', 'DebugAchievements': 'string', 'DebugEAC': 'string', 'DebugEOS': 'string', 'DebugInput': 'string', 'DebugSessions': 'string', 'DebugShapes': 'string', 'DebugXui': 'string', 'Language': 'string', 'LogFile': 'string', 'NewPrefabsMod': 'string', 'Platform': 'string', 'ServerPlatforms': 'string', 'SessionInvite': 'string', 'UserDataFolder': 'string', 'MapChunkDatabase': 'string', 'MaxWorldSizeClient': 'string', 'MaxWorldSizeHost': 'string', 'dedicated': 'flag' };
+    // This list should be kept in sync with the frontend state definition.
+    const LAUNCH_PARAM_TYPES = {
+        'AllowCrossplay': 'bool',
+        'AllowJoinConfigModded': 'bool',
+        'LoadSaveGame': 'bool',
+        'LocalizationChecks': 'bool',
+        'NoXInput': 'bool',
+        'PlayerPrefsFile': 'bool',
+        'SkipNewsScreen': 'bool',
+        'DebugNet': 'object',
+        'DebugPackages': 'object',
+        'ExportCustomAtlases': 'object',
+        'NoEAC': 'object',
+        'NoGameSense': 'object',
+        'NoLiteNetLib': 'object',
+        'NoRakNet': 'object',
+        'NoUNet': 'object',
+        'Quick-Continue': 'object',
+        'SkipIntro': 'object',
+        'DisableNativeInput': 'object',
+        'Submission': 'object',
+        'CrossPlatform': 'string',
+        'DebugAchievements': 'string',
+        'DebugEAC': 'string',
+        'DebugEOS': 'string',
+        'DebugInput': 'string',
+        'DebugSessions': 'string',
+        'DebugShapes': 'string',
+        'DebugXui': 'string',
+        'Language': 'string',
+        'LogFile': 'string',
+        'NewPrefabsMod': 'string',
+        'Platform': 'string',
+        'ServerPlatforms': 'string',
+        'SessionInvite': 'string',
+        'UserDataFolder': 'string',
+        'MapChunkDatabase': 'string',
+        'MaxWorldSizeClient': 'int',
+        'MaxWorldSizeHost': 'int',
+        'dedicated': 'flag'
+    };
     if (!launchParameters) return gameArgs;
     
     for (const key in launchParameters) {
         const value = launchParameters[key];
         const type = LAUNCH_PARAM_TYPES[key];
-        if (!type) continue;
-        if ((type === 'bool') || (type === 'string' && value.trim() !== '')) {
-            gameArgs.push(`-${key}=${String(value).trim()}`);
+
+        // Skip if param is not in our list, or if it's disabled/empty
+        if (!type || value === false || value === '') continue;
+
+        const paramName = key.toLowerCase();
+
+        if (type === 'bool' || type === 'string' || type === 'int') {
+            if (String(value).trim() !== '') {
+                gameArgs.push(`-${paramName}=${String(value).trim()}`);
+            }
         } else if ((type === 'object' || type === 'flag') && value === true) {
-            gameArgs.push(`-${key}`);
+            gameArgs.push(`-${paramName}`);
         }
     }
     return gameArgs;
