@@ -1,4 +1,5 @@
-const { app, BrowserWindow, Menu, globalShortcut, shell } = require('electron');
+
+const { app, BrowserWindow, Menu, globalShortcut, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const WindowState = require('electron-window-state');
@@ -31,46 +32,75 @@ function createDesktopShortcut() {
       return;
   }
 
-  let settings = {};
   try {
-      if (fs.existsSync(SETTINGS_PATH)) {
-          settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
-      }
-  } catch (e) {
-      console.error("Failed to load settings for shortcut creation:", e);
-      return;
-  }
+    let settings = {};
+    try {
+        if (fs.existsSync(SETTINGS_PATH)) {
+            settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
+        }
+    } catch (e) {
+        console.warn("Could not load settings for shortcut creation. Proceeding with default behavior.", e);
+    }
 
-  // Default to true if setting is not present
-  if (settings.createDesktopShortcut === false) {
-      console.log('Desktop shortcut creation is disabled in settings.');
-      return;
-  }
+    if (settings.createDesktopShortcut === false) {
+        console.log('Desktop shortcut creation is disabled in settings.');
+        return;
+    }
+    
+    const packageJson = require(path.join(app.getAppPath(), 'package.json'));
+    const appId = packageJson.build.appId;
+    const productName = packageJson.build.productName || packageJson.name;
+    const description = packageJson.description;
 
-  const shortcutName = app.getName();
-  const shortcutPath = path.join(app.getPath('desktop'), `${shortcutName}.lnk`);
-  const targetPath = app.getPath('exe');
+    const shortcutPath = path.join(app.getPath('desktop'), `${productName}.lnk`);
+    const targetPath = app.getPath('exe');
 
-  const options = {
-      target: targetPath,
-      cwd: path.dirname(targetPath),
-      description: 'A feature-rich game launcher for 7 Days to Die.',
-      // Use the executable itself as the icon source. This is more robust
-      // as the icon is embedded into the .exe by electron-builder.
-      icon: targetPath,
-      iconIndex: 0,
-  };
+    const shortcutOptions = {
+        target: targetPath,
+        cwd: path.dirname(targetPath),
+        description: description,
+        icon: targetPath,
+        iconIndex: 0,
+        appUserModelId: appId
+    };
 
-  try {
-      // Using 'update' will create or modify the shortcut. This is useful if the user moves the portable app.
-      const success = shell.writeShortcutLink(shortcutPath, 'update', options);
-      if (success) {
-          console.log('Desktop shortcut created/updated successfully.');
-      } else {
-          console.error('Failed to create/update desktop shortcut.');
-      }
-  } catch (e) {
-      console.error('Error while creating/updating desktop shortcut:', e);
+    // Optimization: Avoid rewriting the shortcut if it already exists and is correct.
+    // This prevents the icon from briefly turning white on every app start.
+    try {
+        const existingShortcut = shell.readShortcutLink(shortcutPath);
+        if (existingShortcut.target === shortcutOptions.target &&
+            existingShortcut.appUserModelId === shortcutOptions.appUserModelId &&
+            existingShortcut.cwd.toLowerCase() === shortcutOptions.cwd.toLowerCase()) {
+            return; // Shortcut is already correct.
+        }
+    } catch (e) {
+        // Shortcut doesn't exist or is invalid, so we need to create/update it.
+    }
+
+    try {
+        const success = shell.writeShortcutLink(shortcutPath, 'update', shortcutOptions);
+        if (success) {
+            console.log('Desktop shortcut created/updated successfully.');
+        } else {
+            console.error('Failed to create/update desktop shortcut.');
+            dialog.showErrorBox(
+                'Shortcut Creation Failed',
+                'The application could not create a desktop shortcut. This may be due to folder permissions or security software.'
+            );
+        }
+    } catch (e) {
+        console.error('Error while creating/updating desktop shortcut:', e);
+        dialog.showErrorBox(
+            'Shortcut Creation Error',
+            `An unexpected error occurred: ${e.message}`
+        );
+    }
+  } catch(e) {
+      console.error('A critical error occurred during shortcut creation process:', e);
+      dialog.showErrorBox(
+        'Shortcut Creation Error',
+        `A critical error occurred: ${e.message}`
+      );
   }
 }
 
