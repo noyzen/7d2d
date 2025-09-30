@@ -27,15 +27,27 @@ const CHAT_HISTORY_PATH = path.join(LAUNCHER_FILES_PATH, 'chathistory.json');
 
 function getLocalIp() {
     const networkInterfaces = os.networkInterfaces();
+    const privateIps = [];
+    const otherIps = [];
+
     for (const interfaceName in networkInterfaces) {
         const networkInterface = networkInterfaces[interfaceName];
         for (const interfaceInfo of networkInterface) {
             if (interfaceInfo.family === 'IPv4' && !interfaceInfo.internal) {
-                return interfaceInfo.address;
+                if (
+                    interfaceInfo.address.startsWith('192.168.') ||
+                    interfaceInfo.address.startsWith('10.') ||
+                    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(interfaceInfo.address)
+                ) {
+                    privateIps.push(interfaceInfo.address);
+                } else {
+                    otherIps.push(interfaceInfo.address);
+                }
             }
         }
     }
-    return '127.0.0.1'; // Fallback
+    // Prioritize private IPs, otherwise use any other IP, finally fallback to loopback.
+    return privateIps[0] || otherIps[0] || '127.0.0.1';
 }
 
 function loadChatHistory() {
@@ -100,7 +112,19 @@ function broadcastPacket(type, payload) {
 function checkPeers() {
   const now = Date.now();
   let changed = false;
+
+  // Keep self alive in the list
+  if (peers.has(INSTANCE_ID)) {
+      const self = peers.get(INSTANCE_ID);
+      self.lastSeen = now;
+      if (self.status !== 'online') {
+          self.status = 'online';
+          changed = true;
+      }
+  }
+
   for (const [id, peer] of peers.entries()) {
+    if (id === INSTANCE_ID) continue; // Don't time out self
     if (peer.status === 'online' && now - peer.lastSeen > PEER_TIMEOUT) {
       peer.status = 'offline';
       changed = true;
@@ -121,6 +145,7 @@ function handleStartDiscovery() {
       return;
     }
     
+    const localIp = getLocalIp();
     lanSocket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
 
     lanSocket.on('error', (err) => {
@@ -161,9 +186,9 @@ function handleStartDiscovery() {
       }
     });
 
-    lanSocket.bind(LAN_PORT, () => {
+    lanSocket.bind(LAN_PORT, localIp, () => {
       lanSocket.setBroadcast(true);
-      console.log('LAN socket bound. Starting discovery...');
+      console.log(`LAN socket bound to ${localIp}. Starting discovery...`);
       broadcastInterval = setInterval(() => broadcastPacket('heartbeat'), BROADCAST_INTERVAL);
       broadcastPacket('heartbeat');
       peerCheckInterval = setInterval(checkPeers, BROADCAST_INTERVAL);
