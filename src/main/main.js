@@ -55,11 +55,15 @@ function createDesktopShortcut() {
     const appId = 'com.noyzen.7d2dlauncher';
     const productName = app.name;
     const shortcutPath = path.join(app.getPath('desktop'), `${productName}.lnk`);
-    const targetPath = app.getPath('exe');
+
+    // Use CWD which correctly resolves the path for portable apps, unlike
+    // app.getPath('exe') which may point to a temporary directory during first run.
+    const exeName = path.basename(app.getPath('exe'));
+    const targetPath = path.join(CWD, exeName);
 
     const shortcutOptions = {
       target: targetPath,
-      cwd: path.dirname(targetPath),
+      cwd: CWD,
       description: packageJson.description,
       icon: targetPath,
       iconIndex: 0,
