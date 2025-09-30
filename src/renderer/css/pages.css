@@ -290,7 +290,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 19px; /* Adjusted for border */
+    padding: 10px 15px;
     background: rgba(26, 26, 26, 0.7);
     border: 2px solid var(--border-glass);
     border-radius: 6px;
@@ -312,8 +312,13 @@
     content: '\f00c'; /* fa-check */
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
+    font-style: normal;
+    font-variant: normal;
+    text-rendering: auto;
+    -webkit-font-smoothing: antialiased;
     position: absolute;
-    top: 12px;
+    top: 50%;
+    transform: translateY(-50%);
     right: 15px;
     color: var(--primary);
     font-size: 1.2rem;
@@ -321,7 +326,7 @@
     transition: transform 0.2s ease;
 }
 .mod-card:hover.enabled::before {
-    transform: scale(1.1);
+    transform: translateY(-50%) scale(1.1);
 }
 
 .mod-card.in-set::after {
@@ -336,14 +341,64 @@
     font-size: 0.8rem;
 }
 
-.mod-info { overflow: hidden; padding-right: 40px; min-width: 0; }
-.mod-info h3 { margin: 0; display: flex; align-items: center; gap: 8px; }
-.mod-version { font-size: 0.8rem; color: var(--fg-med); font-family: var(--font-body); font-weight: normal; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; }
-.mod-author { font-size: 0.9rem; color: var(--primary); margin: 5px 0; }
-.mod-desc { font-size: 0.9rem; margin: 0; color: var(--fg-med); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mod-card.invalid { border-left-color: var(--error); border-left-width: 4px; }
-.mod-card.invalid h3 { color: var(--error); }
-.mod-card.invalid .mod-author { color: var(--fg-med); }
+.mod-info {
+    overflow: hidden;
+    padding-right: 40px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.mod-title {
+    margin: 0;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.mod-meta {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 0.8rem;
+    color: var(--fg-med);
+}
+.mod-author {
+    margin: 0;
+}
+.mod-version {
+    font-family: var(--font-body);
+    font-weight: normal;
+    background: rgba(0,0,0,0.3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+.mod-card.enabled .mod-author {
+    color: var(--primary);
+}
+.mod-desc {
+    font-size: 0.85rem;
+    margin: 0;
+    color: var(--fg-med);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.8;
+}
+.mod-card.invalid {
+    border-left-color: var(--error);
+    border-left-width: 4px;
+}
+.mod-card.invalid .mod-title {
+    color: var(--error);
+}
+.mod-card.invalid .mod-author {
+    color: var(--fg-med) !important;
+}
 
 
 /* --- PAGE: SETTINGS --- */

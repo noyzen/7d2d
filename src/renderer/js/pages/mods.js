@@ -22,30 +22,47 @@ function createModElement(mod) {
 
   modEl.innerHTML = `
     <div class="mod-info" title="${mod.description}">
-      <h3>
+      <h3 class="mod-title">
         ${!mod.isValid ? '<i class="fa-solid fa-triangle-exclamation" title="Invalid Mod"></i>' : ''}
-        ${mod.name} 
-        <span class="mod-version">${mod.version}</span>
+        ${mod.name}
       </h3>
-      <p class="mod-author">by ${mod.author}</p>
+      <div class="mod-meta">
+        <p class="mod-author">by ${mod.author}</p>
+        <span class="mod-version">${mod.version}</span>
+      </div>
       <p class="mod-desc">${mod.description}</p>
     </div>
   `;
 
   modEl.addEventListener('click', async () => {
-    // Prevent rapid re-clicks while processing
     if (modEl.classList.contains('processing')) return;
     modEl.classList.add('processing');
 
     await window.mods.toggle({ folderName: mod.folderName, enable: !mod.isEnabled });
     
-    // If a mod set was selected, toggling any mod reverts to manual configuration.
-    if (selectedModSetName !== null) {
-        selectedModSetName = null;
+    // Manually update the state of the mod in our local array
+    const modInState = allMods.find(m => m.folderName === mod.folderName);
+    if (modInState) {
+        modInState.isEnabled = !modInState.isEnabled;
     }
 
+    // If we were viewing a set, we have now deviated from it.
+    const wasInSetMode = selectedModSetName !== null;
+    if (wasInSetMode) {
+        selectedModSetName = null;
+        renderModSets(); // Updates which set is active
+        renderModSetActions(); // Updates buttons
+        // Remove `in-set` class from all cards since we are in manual mode now.
+        document.querySelectorAll('.mod-card.in-set').forEach(card => card.classList.remove('in-set'));
+    }
+    
+    // Update the visual state of just this card
+    modEl.classList.toggle('enabled', modInState.isEnabled);
+
     rendererEvents.emit('mods:changed');
-    loadMods(); // This reloads and re-renders everything.
+    
+    // Allow re-clicking after a short delay
+    setTimeout(() => modEl.classList.remove('processing'), 100);
   });
 
   return modEl;
@@ -164,6 +181,7 @@ function renderModLists() {
     const listEl = getEl('mod-list');
     if (!listEl) return;
     
+    const scrollPosition = listEl.scrollTop;
     listEl.innerHTML = '';
     
     if (isLoading) {
@@ -183,6 +201,7 @@ function renderModLists() {
     } else {
         listEl.innerHTML = `<p class="no-mods">No mods found.</p>`;
     }
+    listEl.scrollTop = scrollPosition;
 }
 
 async function applyModList(modFolderNames, confirmationMessage) {
