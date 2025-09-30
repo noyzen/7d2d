@@ -144,31 +144,60 @@ p { color: var(--fg-med); line-height: 1.6; }
 .home-content { display: flex; flex-direction: column; align-items: center; gap: 20px; max-width: 600px; width: 100%;}
 .home-content h1 { font-size: 2.8rem; text-shadow: 0 0 15px rgba(255,255,255,0.3); }
 
-.player-name-container {
-  width: 100%;
-  max-width: 400px;
-  margin-bottom: 15px;
-  text-align: left;
+.player-name-wrapper {
+    display: none; /* Controlled by JS */
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 25px;
+    height: 50px; /* Prevents layout shift */
+    width: 100%;
+    max-width: 450px;
 }
-.player-name-container label {
-  display: block;
-  margin-bottom: 8px;
-  font-family: var(--font-heading);
-  color: var(--fg-light);
-  font-size: 0.9rem;
-  text-align: center;
+
+#player-name-display {
+    font-size: 1.5rem;
+    font-family: var(--font-heading);
+    color: var(--primary);
+    text-shadow: 0 0 8px var(--primary-glow);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
+
+#edit-player-name-btn {
+    background: transparent;
+    border: none;
+    color: var(--fg-med);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+#edit-player-name-btn:hover {
+    color: var(--primary);
+    background-color: rgba(0, 255, 127, 0.15);
+}
+
+.hidden {
+    display: none !important;
+}
+
 #player-name-input {
-  width: 100%;
-  padding: 12px 15px;
-  background: rgba(0,0,0,0.4);
-  border: 1px solid var(--border-glass);
-  border-radius: 6px;
-  color: var(--fg-light);
-  font-size: 1rem;
-  font-family: var(--font-body);
-  transition: all 0.3s ease;
-  text-align: center;
+    padding: 8px 15px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border-glass);
+    border-radius: 6px;
+    color: var(--fg-light);
+    font-size: 1.5rem;
+    font-family: var(--font-heading);
+    transition: all 0.3s ease;
+    text-align: center;
+    max-width: 80%;
 }
 #player-name-input:focus {
   outline: none;
@@ -232,20 +261,23 @@ p { color: var(--fg-med); line-height: 1.6; }
 .setting-label h3 { margin: 0 0 5px 0; }
 .setting-label p { margin: 0; font-size: 0.9rem; }
 
-/* Config Editor */
-.config-editor-container {
+/* Config & Registry Editors */
+.config-editor-container,
+.registry-editor-container {
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
 
-#config-rules-list {
+#config-rules-list,
+#registry-rules-list {
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
 
-.config-rule-card {
+.config-rule-card,
+.registry-rule-card {
     background: rgba(26, 26, 26, 0.7);
     padding: 20px;
     border-radius: 8px;
@@ -256,19 +288,22 @@ p { color: var(--fg-med); line-height: 1.6; }
     animation: fadeIn 0.3s ease;
 }
 
-.config-rule-header {
+.config-rule-header,
+.registry-rule-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.config-rule-header h3 {
+.config-rule-header h3,
+.registry-rule-header h3 {
     margin: 0;
     font-size: 1.1rem;
     color: var(--primary);
 }
 
-.config-rule-header .remove-rule-btn {
+.config-rule-header .remove-rule-btn,
+.registry-rule-header .remove-rule-btn {
     background: transparent;
     border: none;
     color: var(--error);
@@ -279,11 +314,13 @@ p { color: var(--fg-med); line-height: 1.6; }
     border-radius: 4px;
     transition: background-color 0.2s;
 }
-.config-rule-header .remove-rule-btn:hover {
+.config-rule-header .remove-rule-btn:hover,
+.registry-rule-header .remove-rule-btn:hover {
     background-color: rgba(255, 77, 77, 0.2);
 }
 
-.config-rule-body {
+.config-rule-body,
+.registry-rule-body {
     display: flex;
     flex-direction: column;
     gap: 15px;

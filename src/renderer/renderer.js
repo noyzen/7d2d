@@ -4,6 +4,7 @@ let settings = {
   exitOnLaunch: false,
   playerName: 'Survivor',
   configEditorRules: [],
+  registryEditorRules: [],
 };
 
 // --- DOM ELEMENTS ---
@@ -25,7 +26,10 @@ const pages = document.querySelectorAll('.page');
 // Home Page
 const startGameBtn = document.getElementById('start-game-btn');
 const startGameError = document.getElementById('start-game-error');
+const playerNameWrapper = document.getElementById('player-name-wrapper');
+const playerNameDisplay = document.getElementById('player-name-display');
 const playerNameInput = document.getElementById('player-name-input');
+const editPlayerNameBtn = document.getElementById('edit-player-name-btn');
 
 // Mods Page
 const enabledModsList = document.getElementById('enabled-mods-list');
@@ -36,6 +40,9 @@ const musicToggle = document.getElementById('setting-music-toggle');
 const exitOnLaunchToggle = document.getElementById('setting-exit-toggle');
 const configRulesList = document.getElementById('config-rules-list');
 const addConfigRuleBtn = document.getElementById('add-config-rule-btn');
+const registryEditorWrapper = document.getElementById('registry-editor-wrapper');
+const registryRulesList = document.getElementById('registry-rules-list');
+const addRegistryRuleBtn = document.getElementById('add-registry-rule-btn');
 
 
 // --- WINDOW CONTROLS ---
@@ -73,15 +80,31 @@ navButtons.forEach(button => {
       loadMods();
     } else if (pageId === 'page-settings') {
       renderConfigEditorRules();
+      renderRegistryRules();
     }
   });
 });
+
+// Helper to control player name visibility
+function updatePlayerNameVisibility() {
+    const hasConfigRules = settings.configEditorRules && settings.configEditorRules.length > 0;
+    const hasRegistryRules = settings.registryEditorRules && settings.registryEditorRules.length > 0;
+
+    if (hasConfigRules || hasRegistryRules) {
+        playerNameWrapper.style.display = 'flex';
+    } else {
+        playerNameWrapper.style.display = 'none';
+    }
+}
 
 // Settings
 function applySettings() {
   musicToggle.checked = settings.playMusic ?? true;
   exitOnLaunchToggle.checked = settings.exitOnLaunch ?? false;
-  playerNameInput.value = settings.playerName || 'Survivor';
+  
+  const playerName = settings.playerName || 'Survivor';
+  playerNameDisplay.textContent = playerName;
+  playerNameInput.value = playerName;
 
   if (settings.playMusic) {
     bgm.play().catch(e => console.error("Audio playback failed:", e));
@@ -105,9 +128,45 @@ exitOnLaunchToggle.addEventListener('change', () => {
   saveSettings();
 });
 
-playerNameInput.addEventListener('change', () => {
-    settings.playerName = playerNameInput.value;
+// Player Name Editing
+function saveAndExitEditMode() {
+    // Trim and use a fallback name if empty
+    const newName = playerNameInput.value.trim();
+    if (newName) {
+        settings.playerName = newName;
+    } else {
+        settings.playerName = 'Survivor'; // Fallback
+    }
+
     saveSettings();
+
+    // Update UI elements with potentially corrected name
+    playerNameDisplay.textContent = settings.playerName;
+    playerNameInput.value = settings.playerName;
+
+    // Switch back to display mode
+    playerNameInput.classList.add('hidden');
+    playerNameDisplay.classList.remove('hidden');
+    editPlayerNameBtn.classList.remove('hidden');
+}
+
+editPlayerNameBtn.addEventListener('click', () => {
+    playerNameDisplay.classList.add('hidden');
+    editPlayerNameBtn.classList.add('hidden');
+    playerNameInput.classList.remove('hidden');
+    playerNameInput.focus();
+    playerNameInput.select();
+});
+
+playerNameInput.addEventListener('blur', saveAndExitEditMode);
+playerNameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        saveAndExitEditMode();
+    } else if (e.key === 'Escape') {
+        // Revert changes and exit
+        playerNameInput.value = settings.playerName;
+        saveAndExitEditMode(); // This will just exit without saving new value
+    }
 });
 
 
@@ -256,6 +315,7 @@ function createConfigRuleElement(rule) {
         settings.configEditorRules = settings.configEditorRules.filter(r => r.id !== rule.id);
         saveSettings();
         renderConfigEditorRules();
+        updatePlayerNameVisibility();
     });
 
     return ruleEl;
@@ -285,11 +345,105 @@ addConfigRuleBtn.addEventListener('click', () => {
     settings.configEditorRules.push(newRule);
     saveSettings();
     renderConfigEditorRules();
+    updatePlayerNameVisibility();
+});
+
+// Registry Editor
+function createRegistryRuleElement(rule) {
+    const ruleEl = document.createElement('div');
+    ruleEl.className = 'registry-rule-card';
+    ruleEl.dataset.id = rule.id;
+
+    ruleEl.innerHTML = `
+        <div class="registry-rule-header">
+            <h3>Registry Rule #${String(rule.id).slice(-4)}</h3>
+            <button class="remove-rule-btn" title="Remove Rule"><i class="fa-solid fa-trash-can"></i></button>
+        </div>
+        <div class="registry-rule-body">
+            <div class="config-field">
+                <label for="reg-path-${rule.id}">Registry Path</label>
+                <input type="text" id="reg-path-${rule.id}" value="${rule.regPath || ''}" placeholder="e.g., HKEY_CURRENT_USER\\Software\\MyGame">
+            </div>
+            <div class="config-field">
+                <label for="key-name-${rule.id}">Key Name</label>
+                <input type="text" id="key-name-${rule.id}" value="${rule.keyName || ''}" placeholder="e.g., PlayerName_h12345">
+            </div>
+            <div class="config-field">
+                <label for="key-value-${rule.id}">Key Value Template (use ##7d2dlauncher-username##)</label>
+                <input type="text" id="key-value-${rule.id}" value="${rule.keyValueTemplate || ''}" placeholder="e.g., ##7d2dlauncher-username##">
+            </div>
+        </div>
+    `;
+
+    // Event Listeners
+    const regPathInput = ruleEl.querySelector(`#reg-path-${rule.id}`);
+    const keyNameInput = ruleEl.querySelector(`#key-name-${rule.id}`);
+    const keyValueInput = ruleEl.querySelector(`#key-value-${rule.id}`);
+    const removeBtn = ruleEl.querySelector('.remove-rule-btn');
+
+    const updateRule = () => {
+        const ruleIndex = settings.registryEditorRules.findIndex(r => r.id === rule.id);
+        if (ruleIndex > -1) {
+            settings.registryEditorRules[ruleIndex] = {
+                ...settings.registryEditorRules[ruleIndex],
+                regPath: regPathInput.value,
+                keyName: keyNameInput.value,
+                keyValueTemplate: keyValueInput.value,
+            };
+            saveSettings();
+        }
+    };
+    
+    regPathInput.addEventListener('change', updateRule);
+    keyNameInput.addEventListener('change', updateRule);
+    keyValueInput.addEventListener('change', updateRule);
+
+    removeBtn.addEventListener('click', () => {
+        settings.registryEditorRules = settings.registryEditorRules.filter(r => r.id !== rule.id);
+        saveSettings();
+        renderRegistryRules();
+        updatePlayerNameVisibility();
+    });
+
+    return ruleEl;
+}
+
+function renderRegistryRules() {
+    if (window.appInfo.platform !== 'win32') return;
+
+    registryRulesList.innerHTML = '';
+    if (settings.registryEditorRules && settings.registryEditorRules.length > 0) {
+        settings.registryEditorRules.forEach(rule => {
+            registryRulesList.appendChild(createRegistryRuleElement(rule));
+        });
+    } else {
+        registryRulesList.innerHTML = '<p class="no-mods">No registry rules added yet.</p>';
+    }
+}
+
+addRegistryRuleBtn.addEventListener('click', () => {
+    const newRule = {
+        id: Date.now(),
+        regPath: '',
+        keyName: '',
+        keyValueTemplate: '',
+    };
+    if (!settings.registryEditorRules) {
+      settings.registryEditorRules = [];
+    }
+    settings.registryEditorRules.push(newRule);
+    saveSettings();
+    renderRegistryRules();
+    updatePlayerNameVisibility();
 });
 
 // --- INITIALIZATION ---
 async function init() {
   refreshMaxButton();
+
+  if (window.appInfo.platform !== 'win32') {
+    registryEditorWrapper.style.display = 'none';
+  }
 
   const data = await window.launcher.getInitialData();
 
@@ -307,6 +461,7 @@ async function init() {
   }
 
   applySettings();
+  updatePlayerNameVisibility();
 }
 
 init();

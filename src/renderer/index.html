@@ -48,9 +48,10 @@
         <div class="home-content">
           <h1>Welcome Back, Survivor</h1>
           <p>Your wasteland adventure awaits. Manage your mods, tweak settings, and dive back into the apocalypse.</p>
-          <div class="player-name-container">
-            <label for="player-name-input">Player Name</label>
-            <input type="text" id="player-name-input" placeholder="Enter your name...">
+          <div id="player-name-wrapper" class="player-name-wrapper">
+              <span id="player-name-display">Survivor</span>
+              <input type="text" id="player-name-input" class="hidden">
+              <button id="edit-player-name-btn" title="Edit Player Name"><i class="fa-solid fa-pencil"></i></button>
           </div>
           <button id="start-game-btn" class="start-button">
             <i class="fa-solid fa-play"></i>
@@ -123,6 +124,23 @@
                 <span>Add New Rule</span>
             </button>
         </div>
+
+        <div id="registry-editor-wrapper">
+          <div class="page-header" style="margin-top: 30px; border-top: 1px solid var(--border-glass); padding-top: 30px;">
+              <h1>Registry Key Editor</h1>
+              <p>Define registry keys to update with your player name. (Windows Only)</p>
+          </div>
+          <div class="registry-editor-container">
+              <div id="registry-rules-list">
+                  <!-- Registry rules will be dynamically inserted here -->
+              </div>
+              <button id="add-registry-rule-btn" class="add-rule-button">
+                  <i class="fa-solid fa-plus"></i>
+                  <span>Add New Registry Rule</span>
+              </button>
+          </div>
+        </div>
+
       </div>
     </main>
   </div>

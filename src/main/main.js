@@ -161,8 +161,9 @@ ipcMain.handle('launcher:start-game', async (_, settings) => {
     return { error: `7DaysToDie.exe not found in the launcher directory!` };
   }
 
-  // --- Apply config edits before launching ---
-  const { playerName, configEditorRules } = settings;
+  const { playerName, configEditorRules, registryEditorRules } = settings;
+
+  // --- Apply config file edits before launching ---
   if (playerName && configEditorRules && configEditorRules.length > 0) {
     try {
       for (const rule of configEditorRules) {
@@ -190,6 +191,52 @@ ipcMain.handle('launcher:start-game', async (_, settings) => {
     } catch (e) {
       console.error("Failed to apply config edits:", e);
       return { error: `Failed to update config: ${e.message}` };
+    }
+  }
+
+  // --- Apply registry edits before launching (Windows Only) ---
+  if (process.platform === 'win32' && playerName && registryEditorRules && registryEditorRules.length > 0) {
+    try {
+        for (const rule of registryEditorRules) {
+            if (!rule.regPath || !rule.keyName || !rule.keyValueTemplate) {
+                console.warn('Skipping incomplete registry rule:', rule);
+                continue;
+            }
+
+            const newValue = rule.keyValueTemplate.replace(/##7d2dlauncher-username##/g, playerName);
+            
+            await new Promise((resolve, reject) => {
+                const regProcess = spawn('reg', [
+                    'add',
+                    rule.regPath,
+                    '/v',
+                    rule.keyName,
+                    '/d',
+                    newValue,
+                    '/f' // Force overwrite
+                ]);
+
+                let stderr = '';
+                regProcess.stderr.on('data', (data) => {
+                    stderr += data;
+                });
+
+                regProcess.on('close', (code) => {
+                    if (code === 0) {
+                        resolve();
+                    } else {
+                        reject(new Error(`reg command failed with code ${code}: ${stderr}`));
+                    }
+                });
+
+                regProcess.on('error', (err) => {
+                    reject(err);
+                });
+            });
+        }
+    } catch (e) {
+        console.error("Failed to apply registry edits:", e);
+        return { error: `Failed to update registry: ${e.message}` };
     }
   }
 
