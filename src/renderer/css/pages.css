@@ -162,6 +162,7 @@
 .chat-layout { display: flex; height: calc(100vh - 92px); width: 100%; gap: 20px; }
 .chat-sidebar { width: 250px; flex-shrink: 0; display: flex; flex-direction: column; padding: 20px; }
 .chat-sidebar .page-header { display: flex; justify-content: space-between; align-items: center; }
+.chat-sidebar .page-header h2 { font-size: 1.2rem; }
 #clear-chat-btn { background: transparent; border: none; color: var(--fg-med); font-size: 1.2rem; cursor: pointer; padding: 8px; border-radius: 50%; transition: all 0.2s ease; }
 #clear-chat-btn:hover { color: var(--error); background-color: rgba(255, 77, 77, 0.15); }
 

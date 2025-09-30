@@ -59,7 +59,6 @@ async function displayFirewallStatus() {
     }
     if (!statusEl) return;
 
-    statusEl.textContent = 'Checking...';
     const result = await window.launcher.getFirewallStatus();
     
     // Check if element still exists in case user navigated away
@@ -208,6 +207,12 @@ export function init() {
     updatePlayerNameVisibility();
     updateHomePageStats();
     checkAndDisplayFirewallWarning();
+
+    const statusEl = getEl('firewall-status');
+    if(statusEl && statusEl.textContent === 'N/A') {
+        statusEl.textContent = 'Checking...';
+    }
+
     displayFirewallStatus();
     firewallCheckInterval = setInterval(displayFirewallStatus, 15000); // Check every 15s
     

@@ -1,6 +1,6 @@
 export let settings = {
   playMusic: true,
-  exitOnLaunch: false,
+  exitOnLaunch: true,
   playerName: 'Survivor',
   configEditorRules: [],
   registryEditorRules: [],

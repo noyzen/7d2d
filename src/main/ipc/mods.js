@@ -15,7 +15,14 @@ const readModsFromDir = (dirPath) => {
       const xmlPath = path.join(dirPath, dirent.name, 'ModInfo.xml');
       if (fs.existsSync(xmlPath)) {
         try {
-          const modInfo = parser.parse(fs.readFileSync(xmlPath, 'utf8')).xml;
+          const parsedData = parser.parse(fs.readFileSync(xmlPath, 'utf8'));
+          const modInfo = parsedData.xml || parsedData.ModInfo; // Handle multiple common root tags
+
+          if (!modInfo) {
+            console.error(`Could not find <xml> or <ModInfo> root tag in ${xmlPath}`);
+            return { folderName: dirent.name, name: dirent.name, error: 'Could not parse ModInfo.xml' };
+          }
+
           return {
             folderName: dirent.name,
             name: modInfo.DisplayName?.['@_value'] || modInfo.Name?.['@_value'] || dirent.name,
