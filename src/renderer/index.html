@@ -68,6 +68,18 @@
   </div>
 
   <audio id="bgm" loop></audio>
+  
+  <div id="custom-prompt-overlay" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3 id="custom-prompt-title">Enter a value</h3>
+      <p id="custom-prompt-text">Please provide the required information.</p>
+      <input type="text" id="custom-prompt-input" />
+      <div class="modal-buttons">
+        <button id="custom-prompt-cancel-btn" class="modal-btn cancel-btn">Cancel</button>
+        <button id="custom-prompt-ok-btn" class="modal-btn ok-btn">OK</button>
+      </div>
+    </div>
+  </div>
 
   <script src="js/main.js" type="module"></script>
 </body>

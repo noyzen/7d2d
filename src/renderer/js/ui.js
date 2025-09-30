@@ -41,6 +41,63 @@ export function sanitizeText(text) {
     return temp.innerHTML;
 }
 
+/**
+ * Shows a custom prompt modal and returns a promise that resolves with the user's input.
+ * @param {string} title - The title of the modal.
+ * @param {string} text - The descriptive text inside the modal.
+ * @param {string} [defaultValue=''] - The default value for the input field.
+ * @returns {Promise<string|null>} A promise that resolves with the input string, or null if canceled.
+ */
+export function showPrompt(title, text, defaultValue = '') {
+    const overlay = document.getElementById('custom-prompt-overlay');
+    const titleEl = document.getElementById('custom-prompt-title');
+    const textEl = document.getElementById('custom-prompt-text');
+    const inputEl = document.getElementById('custom-prompt-input');
+    const okBtn = document.getElementById('custom-prompt-ok-btn');
+    const cancelBtn = document.getElementById('custom-prompt-cancel-btn');
+
+    if (!overlay || !inputEl || !okBtn || !cancelBtn) {
+        return Promise.reject('Prompt modal elements not found in the DOM.');
+    }
+
+    titleEl.textContent = title;
+    textEl.textContent = text;
+    inputEl.value = defaultValue;
+
+    overlay.classList.remove('hidden');
+    inputEl.focus();
+    inputEl.select();
+
+    return new Promise((resolve) => {
+        const close = (value) => {
+            overlay.classList.add('hidden');
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            inputEl.onkeydown = null;
+            resolve(value);
+        };
+
+        okBtn.onclick = () => {
+            close(inputEl.value.trim());
+        };
+
+        cancelBtn.onclick = () => {
+            close(null);
+        };
+        
+        inputEl.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                okBtn.click();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelBtn.click();
+            }
+        };
+    });
+}
+
+
 // --- Dynamic Element Getters ---
 // We use functions because the elements don't exist until the page is loaded.
 

@@ -1,5 +1,6 @@
 import { rendererEvents } from '../events.js';
 import { settings, saveSettings } from '../state.js';
+import { showPrompt } from '../ui.js';
 
 let enabledMods = [];
 let disabledMods = [];
@@ -145,9 +146,13 @@ function setupEventListeners() {
         rendererEvents.emit('mods:changed');
     });
 
-    getEl('save-mod-set-btn').addEventListener('click', () => {
-        const setName = prompt('Enter a name for this mod set:', '');
-        if (!setName || !setName.trim()) return;
+    getEl('save-mod-set-btn').addEventListener('click', async () => {
+        const setName = await showPrompt(
+            'Save Mod Set',
+            'Enter a name for this new mod set.',
+            ''
+        );
+        if (!setName) return;
 
         const existingSetIndex = settings.modSets.findIndex(s => s.name === setName);
         if (existingSetIndex > -1) {
@@ -158,7 +163,7 @@ function setupEventListeners() {
         }
         
         const newSet = {
-            name: setName.trim(),
+            name: setName,
             mods: enabledMods.map(m => m.folderName)
         };
         settings.modSets.push(newSet);
