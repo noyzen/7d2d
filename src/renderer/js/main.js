@@ -160,8 +160,17 @@ async function init() {
     return;
   }
   
-  document.body.style.backgroundImage = `url('${data.bgPath}')`;
-  bgm.src = data.bgmPath;
+  if (data.bgPath) {
+    document.body.style.backgroundImage = `url('${data.bgPath}')`;
+  } else {
+    document.body.classList.add('no-background-image');
+  }
+  
+  if (data.bgmPath) {
+    bgm.src = data.bgmPath;
+  } else {
+    bgm.removeAttribute('src');
+  }
   
   applyInitialSettings(data.settings);
   initDefaultSettings(); // Ensure defaults are set for new features

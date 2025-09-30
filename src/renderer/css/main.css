@@ -36,6 +36,10 @@ body {
   flex-direction: column;
 }
 
+body.no-background-image {
+  background-image: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.03) 0%, transparent 70%);
+}
+
 h1, h2, h3 { font-family: var(--font-heading); color: var(--fg-light); letter-spacing: 1px; }
 p { color: var(--fg-med); line-height: 1.6; }
 a { color: var(--primary); text-decoration: none; }

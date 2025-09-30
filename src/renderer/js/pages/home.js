@@ -204,7 +204,7 @@ function setupEventListeners() {
             title = 'Confirm Full Game Download';
             message = `
                 <p><strong>DANGER!</strong></p>
-                <p>This will <strong>DELETE ALL</strong> existing files and folders inside the following directory (except for the launcher itself) and replace them with files from the host.</p>
+                <p>This will <strong>DELETE KNOWN GAME FILES</strong> inside the following directory (except for the launcher itself) and replace them with files from the host.</p>
                 <div class="modal-path-display">${safeGamePath}</div>
                 <p>This action cannot be undone. Are you absolutely sure you want to continue?</p>
             `;

@@ -146,6 +146,13 @@ export function init() {
         document.getElementById('registry-backup-wrapper').style.display = 'block';
     }
 
+    // Hide music toggle if no music file is loaded
+    const musicToggleWrapper = document.getElementById('setting-music-wrapper');
+    const bgm = document.getElementById('bgm');
+    if (musicToggleWrapper && !bgm.hasAttribute('src')) {
+        musicToggleWrapper.style.display = 'none';
+    }
+
     renderBackupStatus();
     renderHostStatus([]); // Initial render
     setupEventListeners();

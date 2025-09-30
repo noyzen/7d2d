@@ -46,15 +46,6 @@ function handleRelaunchAsAdmin() {
 
 function handleGetInitialData() {
   ipcMain.handle('launcher:get-initial-data', () => {
-    if (!fs.existsSync(LAUNCHER_FILES_PATH)) {
-      return { error: `Required folder 'LauncherFiles' not found.` };
-    }
-    const bgPath = path.join(LAUNCHER_FILES_PATH, 'bg.jpg');
-    const bgmPath = path.join(LAUNCHER_FILES_PATH, 'bgm.mp3');
-    if (!fs.existsSync(bgPath) || !fs.existsSync(bgmPath)) {
-      return { error: `bg.jpg or bgm.mp3 not found inside 'LauncherFiles'.` };
-    }
-
     let settings = {};
     try {
       if (fs.existsSync(SETTINGS_PATH)) {
@@ -72,11 +63,38 @@ function handleGetInitialData() {
       console.error("Failed to load settings:", e);
     }
     
+    let bgPath = null;
+    let bgmPath = null;
+
+    try {
+      if (fs.existsSync(LAUNCHER_FILES_PATH)) {
+        const files = fs.readdirSync(LAUNCHER_FILES_PATH);
+        
+        const bgFiles = files.filter(f => 
+          f.toLowerCase().startsWith('bg') && 
+          ['.jpg', '.jpeg', '.png', '.webp'].includes(path.extname(f).toLowerCase())
+        );
+        if (bgFiles.length > 0) {
+          const randomBg = bgFiles[Math.floor(Math.random() * bgFiles.length)];
+          bgPath = path.join(LAUNCHER_FILES_PATH, randomBg);
+        }
+
+        const bgmFiles = files.filter(f => 
+          f.toLowerCase().startsWith('bgm') && 
+          ['.mp3', '.wav'].includes(path.extname(f).toLowerCase())
+        );
+        if (bgmFiles.length > 0) {
+          const randomBgm = bgmFiles[Math.floor(Math.random() * bgmFiles.length)];
+          bgmPath = path.join(LAUNCHER_FILES_PATH, randomBgm);
+        }
+      }
+    } catch (e) {
+      console.error("Error scanning for media files:", e);
+    }
+
     let isElevated;
     if (process.platform === 'win32') {
       try {
-        // Attempt to run a command that requires administrative privileges.
-        // `fsutil dirty query` on the system drive is a good choice as it's non-destructive and fast.
         execSync(`fsutil dirty query ${process.env.systemdrive || 'C:'}`, { stdio: 'ignore' });
         isElevated = true;
       } catch (e) {
@@ -88,8 +106,8 @@ function handleGetInitialData() {
 
     return {
       success: true,
-      bgPath: `file:///${bgPath.replace(/\\/g, '/')}`,
-      bgmPath: `file:///${bgmPath.replace(/\\/g, '/')}`,
+      bgPath: bgPath ? `file:///${bgPath.replace(/\\/g, '/')}` : null,
+      bgmPath: bgmPath ? `file:///${bgmPath.replace(/\\/g, '/')}` : null,
       settings,
       isElevated
     };

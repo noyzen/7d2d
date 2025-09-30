@@ -71,7 +71,7 @@ export function applyInitialSettings(loadedSettings) {
         settings = { ...settings, ...loadedSettings };
     }
     const bgm = document.getElementById('bgm');
-    if (settings.playMusic) {
+    if (settings.playMusic && bgm.hasAttribute('src')) {
       bgm.play().catch(e => console.error("Audio playback failed:", e));
     } else {
       bgm.pause();
