@@ -184,31 +184,20 @@ function handleGetFirewallStatus() {
             if (process.platform !== 'win32') {
                 return resolve({ status: 'UNSUPPORTED' });
             }
-            exec('netsh advfirewall show allprofiles state', (error, stdout, stderr) => {
+            // Use PowerShell for a more robust, non-localized check.
+            const command = 'powershell.exe -Command "Get-NetFirewallProfile -Name Private | Select-Object -ExpandProperty Enabled"';
+            exec(command, (error, stdout, stderr) => {
                 if (error || stderr) {
-                    console.error('Firewall check failed:', error || stderr);
+                    console.error('Firewall check via PowerShell failed:', error || stderr);
                     return resolve({ status: 'ERROR', message: error ? error.message : stderr });
                 }
-                try {
-                    // Look for Private Profile state, which is most relevant for LAN
-                    const privateProfileMatch = stdout.match(/Private Profile Settings\s*-*\s*State\s+(ON|OFF)/i);
-                    if (privateProfileMatch && privateProfileMatch[1]) {
-                        return resolve({ status: privateProfileMatch[1].toUpperCase() });
-                    }
-                    // Fallback to Domain Profile if Private not found
-                    const domainProfileMatch = stdout.match(/Domain Profile Settings\s*-*\s*State\s+(ON|OFF)/i);
-                     if (domainProfileMatch && domainProfileMatch[1]) {
-                        return resolve({ status: domainProfileMatch[1].toUpperCase() });
-                    }
-                    // Fallback to Public Profile if others not found
-                     const publicProfileMatch = stdout.match(/Public Profile Settings\s*-*\s*State\s+(ON|OFF)/i);
-                     if (publicProfileMatch && publicProfileMatch[1]) {
-                        return resolve({ status: publicProfileMatch[1].toUpperCase() });
-                    }
-                    resolve({ status: 'UNKNOWN' });
-                } catch (e) {
-                    resolve({ status: 'ERROR', message: 'Failed to parse firewall status.' });
+                const result = stdout.trim().toLowerCase();
+                if (result === 'true') {
+                    return resolve({ status: 'ON' });
+                } else if (result === 'false') {
+                    return resolve({ status: 'OFF' });
                 }
+                resolve({ status: 'UNKNOWN' });
             });
         });
     });

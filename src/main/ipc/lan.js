@@ -2,6 +2,7 @@ const { ipcMain } = require('electron');
 const dgram = require('dgram');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const {
   LAN_PORT,
   BROADCAST_ADDR,
@@ -23,6 +24,19 @@ const CHAT_HISTORY_PATH = path.join(LAUNCHER_FILES_PATH, 'chathistory.json');
 
 
 // --- HELPERS ---
+
+function getLocalIp() {
+    const networkInterfaces = os.networkInterfaces();
+    for (const interfaceName in networkInterfaces) {
+        const networkInterface = networkInterfaces[interfaceName];
+        for (const interfaceInfo of networkInterface) {
+            if (interfaceInfo.family === 'IPv4' && !interfaceInfo.internal) {
+                return interfaceInfo.address;
+            }
+        }
+    }
+    return '127.0.0.1'; // Fallback
+}
 
 function loadChatHistory() {
     try {
@@ -230,7 +244,7 @@ exports.shutdown = () => {
 
 exports.setUsername = (username) => {
   currentUsername = username;
-  updatePeer(INSTANCE_ID, currentUsername, OS_USERNAME, '127.0.0.1');
+  updatePeer(INSTANCE_ID, currentUsername, OS_USERNAME, getLocalIp());
   sendPeerUpdate();
   broadcastPacket('heartbeat');
 };
