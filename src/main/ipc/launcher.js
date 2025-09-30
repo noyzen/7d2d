@@ -1,7 +1,7 @@
 const { ipcMain, app, dialog } = require('electron');
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, exec } = require('child_process');
 const {
   LAUNCHER_FILES_PATH,
   SETTINGS_PATH,
@@ -178,6 +178,42 @@ function buildLaunchArgs(launchParameters) {
     return gameArgs;
 }
 
+function handleGetFirewallStatus() {
+    ipcMain.handle('launcher:get-firewall-status', () => {
+        return new Promise((resolve) => {
+            if (process.platform !== 'win32') {
+                return resolve({ status: 'UNSUPPORTED' });
+            }
+            exec('netsh advfirewall show allprofiles state', (error, stdout, stderr) => {
+                if (error || stderr) {
+                    console.error('Firewall check failed:', error || stderr);
+                    return resolve({ status: 'ERROR', message: error ? error.message : stderr });
+                }
+                try {
+                    // Look for Private Profile state, which is most relevant for LAN
+                    const privateProfileMatch = stdout.match(/Private Profile Settings\s*-*\s*State\s+(ON|OFF)/i);
+                    if (privateProfileMatch && privateProfileMatch[1]) {
+                        return resolve({ status: privateProfileMatch[1].toUpperCase() });
+                    }
+                    // Fallback to Domain Profile if Private not found
+                    const domainProfileMatch = stdout.match(/Domain Profile Settings\s*-*\s*State\s+(ON|OFF)/i);
+                     if (domainProfileMatch && domainProfileMatch[1]) {
+                        return resolve({ status: domainProfileMatch[1].toUpperCase() });
+                    }
+                    // Fallback to Public Profile if others not found
+                     const publicProfileMatch = stdout.match(/Public Profile Settings\s*-*\s*State\s+(ON|OFF)/i);
+                     if (publicProfileMatch && publicProfileMatch[1]) {
+                        return resolve({ status: publicProfileMatch[1].toUpperCase() });
+                    }
+                    resolve({ status: 'UNKNOWN' });
+                } catch (e) {
+                    resolve({ status: 'ERROR', message: 'Failed to parse firewall status.' });
+                }
+            });
+        });
+    });
+}
+
 function handleStartGame() {
     ipcMain.handle('launcher:start-game', async (_, settings) => {
         if (gameProcess) return { error: 'Game is already running.' };
@@ -224,4 +260,5 @@ exports.init = (mw) => {
   handleSaveSettings();
   handleStartGame();
   handleSelectFile();
+  handleGetFirewallStatus();
 };

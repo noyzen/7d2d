@@ -1,4 +1,5 @@
 import { get, sanitizeText } from '../ui.js';
+import { settings } from '../state.js';
 
 let selfId = null;
 let unreadMessageCount = 0;
@@ -39,7 +40,7 @@ function renderPlayerList(peers) {
       <div class="status-dot ${peer.status}"></div>
       <div class="player-name-container">
         <span class="player-name" title="${peer.name}">${peer.name} ${peer.id === selfId ? '(You)' : ''}</span>
-        <span class="player-os-name">${peer.osUsername || ''}</span>
+        <span class="player-os-name">${peer.osUsername || ''} - ${peer.address}</span>
       </div>
     `;
     playerListEl.appendChild(playerEl);
@@ -86,20 +87,48 @@ function setupEventListeners() {
     });
 
     window.lan.onMessageReceived((message) => {
+        // Prevent duplicate self-messages from appearing
+        if (message.id === selfId && document.querySelector('.chat-message:last-child')?.textContent.includes(message.text)) {
+            return;
+        }
         appendChatMessage(message);
         if (message.id !== selfId && !document.querySelector('.nav-button[data-page="chat"]').classList.contains('active')) {
             unreadMessageCount++;
             updateUnreadBadge();
         }
     });
+
+    document.getElementById('clear-chat-btn')?.addEventListener('click', async () => {
+        if (confirm('Are you sure you want to permanently delete the chat history? This cannot be undone.')) {
+            await window.lan.clearChatHistory();
+            const chatMessagesEl = get.chatMessages();
+            chatMessagesEl.innerHTML = '<div class="chat-notice">Chat history has been cleared.</div>';
+        }
+    });
 }
 
-export function init() {
+export async function init() {
     // Clear notifications on entering chat page
     unreadMessageCount = 0;
     updateUnreadBadge();
     setupEventListeners();
 
     const chatMessagesEl = get.chatMessages();
-    if(chatMessagesEl) chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+    
+    // Load chat history
+    if (chatMessagesEl) {
+        chatMessagesEl.innerHTML = '<div class="chat-notice">Loading history...</div>';
+        const history = await window.lan.getChatHistory();
+        
+        chatMessagesEl.innerHTML = '';
+        if (history.length > 0) {
+            history.forEach(appendChatMessage);
+        } else {
+            chatMessagesEl.innerHTML = '<div class="chat-notice">Welcome to the LAN chat! Messages are saved between sessions.</div>';
+        }
+        chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+    }
+    
+    // Trigger an update for peer list
+    window.lan.setUsername(settings.playerName || 'Survivor');
 }

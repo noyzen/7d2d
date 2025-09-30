@@ -2,17 +2,20 @@
     <div class="chat-layout">
       <aside class="chat-sidebar">
         <div class="page-header" style="padding: 0; border: none;">
-            <h2>Players on LAN</h2>
-            <p>Users running the launcher.</p>
+            <div>
+              <h2>Players on LAN</h2>
+              <p>Users running the launcher.</p>
+            </div>
+            <button id="clear-chat-btn" title="Clear Chat History" class="remove-rule-btn" style="font-size: 1.1rem;"><i class="fa-solid fa-trash-can"></i></button>
         </div>
         <div id="player-list" class="player-list">
-          <!-- Player items will be inserted here -->
+          <div class="loading-spinner" style="margin: 20px auto;"></div>
         </div>
       </aside>
       <main class="chat-main">
         <div id="chat-messages" class="chat-messages">
           <div class="chat-notice">
-            Welcome to the LAN chat! Messages are not saved and will disappear when you close the launcher.
+            Welcome to the LAN chat! Messages are now saved between sessions.
           </div>
         </div>
         <form id="chat-form" class="chat-form" aria-label="Chat Message Form">

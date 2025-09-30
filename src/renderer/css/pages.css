@@ -15,7 +15,7 @@
     width: 100%;
 }
 
-.home-content h1 { font-size: 2.8rem; text-shadow: 0 0 15px rgba(255,255,255,0.3); }
+.home-content h1 { font-size: 2.8rem; text-shadow: 0 0 15px rgba(255,255,255,0.3); margin-top: 20px; }
 
 .player-name-wrapper {
     display: none; align-items: center; justify-content: center; gap: 15px;
@@ -57,9 +57,13 @@
 .stat-card { padding: 15px 25px; text-align: center; background: rgba(0,0,0,0.2); border-radius: 8px; }
 .stat-card h3 { margin: 0 0 5px 0; font-size: 0.9rem; color: var(--fg-med); font-weight: 400; text-transform: uppercase; }
 .stat-card p { margin: 0; font-size: 2rem; font-family: var(--font-heading); color: var(--primary); line-height: 1; }
+#firewall-status { font-weight: bold; text-shadow: 0 0 5px rgba(0,0,0,0.5); }
 
 .home-lan-status {
-    margin-top: 20px; padding: 20px; width: 100%; max-width: 500px;
+    width: 100%;
+    max-width: 600px;
+    margin-bottom: 30px;
+    padding: 25px;
     text-align: left; display: flex; flex-direction: column; gap: 15px; animation: fadeIn 0.5s ease;
 }
 .lan-status-header { display: flex; justify-content: space-between; align-items: center; }
@@ -70,12 +74,23 @@
     font-size: 0.9rem; display: flex; align-items: center; gap: 6px;
 }
 .go-to-chat-btn:hover { background-color: rgba(0, 255, 127, 0.15); border-color: var(--primary); color: var(--primary); }
-.home-player-list { display: flex; flex-wrap: wrap; gap: 8px; }
-.home-player-name {
-    background: rgba(255, 255, 255, 0.05); color: var(--fg-light); padding: 4px 10px;
-    border-radius: 12px; font-size: 0.9rem; border: 1px solid var(--border-glass);
+.home-player-list { 
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
 }
-.home-player-name.is-self { font-weight: bold; color: var(--primary); background: rgba(0, 255, 127, 0.1); border-color: rgba(0, 255, 127, 0.5); }
+.home-player-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-glass);
+    display: flex;
+    flex-direction: column;
+}
+.home-player-name { font-weight: bold; color: var(--fg-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home-player-ip { font-size: 0.8rem; color: var(--fg-med); }
+.home-player-item.is-self .home-player-name { color: var(--primary); }
+
 
 /* --- PAGE: MODS --- */
 .mod-lists { display: flex; flex-direction: column; gap: 30px; }
@@ -140,6 +155,10 @@
 /* --- PAGE: CHAT --- */
 .chat-layout { display: flex; height: calc(100vh - 92px); width: 100%; gap: 20px; }
 .chat-sidebar { width: 250px; flex-shrink: 0; display: flex; flex-direction: column; padding: 20px; }
+.chat-sidebar .page-header { display: flex; justify-content: space-between; align-items: center; }
+#clear-chat-btn { background: transparent; border: none; color: var(--fg-med); font-size: 1.2rem; cursor: pointer; padding: 8px; border-radius: 50%; transition: all 0.2s ease; }
+#clear-chat-btn:hover { color: var(--error); background-color: rgba(255, 77, 77, 0.15); }
+
 .player-list { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 10px; margin-right: -10px; }
 .player-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 4px; transition: background-color 0.2s; }
 .player-item.is-self { background-color: rgba(0, 255, 127, 0.1); font-weight: bold; }
@@ -148,7 +167,7 @@
 .status-dot.offline { background-color: #666; }
 .player-name-container { display: flex; flex-direction: column; overflow: hidden; }
 .player-name, .player-os-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.player-os-name { font-size: 0.8rem; color: var(--fg-med); }
+.player-os-name { font-size: 0.8rem; color: var(--fg-med); white-space: normal; word-break: break-all; }
 .chat-main { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
 .chat-messages { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
 .chat-message { display: flex; flex-direction: column; gap: 4px; max-width: 80%; align-self: flex-start; }

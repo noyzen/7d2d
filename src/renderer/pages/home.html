@@ -1,12 +1,24 @@
 <div class="page active" id="page-home">
     <div class="home-content">
+      <div id="home-lan-status" class="home-lan-status hidden">
+        <div class="lan-status-header">
+          <h3>Players on LAN (<span id="lan-player-count">0</span>)</h3>
+          <button id="go-to-chat-btn" class="go-to-chat-btn">Open Chat <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+        <div id="home-player-list" class="home-player-list">
+            <div class="loading-spinner" style="margin: 10px auto;"></div>
+        </div>
+      </div>
+
       <h1>Welcome Back, Survivor</h1>
       <p>Your wasteland adventure awaits. Manage your mods, tweak settings, and dive back into the apocalypse.</p>
+      
       <div id="player-name-wrapper" class="player-name-wrapper">
           <span id="player-name-display">Survivor</span>
           <input type="text" id="player-name-input" class="hidden">
           <button id="edit-player-name-btn" title="Edit Player Name"><i class="fa-solid fa-pencil"></i></button>
       </div>
+      
       <button id="start-game-btn" class="start-button">
         <i class="fa-solid fa-play"></i>
         <span>START GAME</span>
@@ -18,14 +30,11 @@
           <h3>Active Mods</h3>
           <p id="active-mods-count">0</p>
         </div>
+        <div class="stat-card" id="firewall-stat-card">
+            <h3>Firewall</h3>
+            <p id="firewall-status">N/A</p>
+        </div>
       </div>
 
-      <div id="home-lan-status" class="home-lan-status hidden">
-        <div class="lan-status-header">
-          <h3>Players on LAN (<span id="lan-player-count">0</span>)</h3>
-          <button id="go-to-chat-btn" class="go-to-chat-btn">Open Chat <i class="fa-solid fa-arrow-right"></i></button>
-        </div>
-        <div id="home-player-list" class="home-player-list"></div>
-      </div>
     </div>
 </div>

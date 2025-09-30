@@ -1,5 +1,7 @@
 const { ipcMain } = require('electron');
 const dgram = require('dgram');
+const path = require('path');
+const fs = require('fs');
 const {
   LAN_PORT,
   BROADCAST_ADDR,
@@ -7,6 +9,7 @@ const {
   PEER_TIMEOUT,
   INSTANCE_ID,
   OS_USERNAME,
+  LAUNCHER_FILES_PATH,
 } = require('../constants');
 
 let mainWindow;
@@ -15,8 +18,39 @@ let broadcastInterval = null;
 let peerCheckInterval = null;
 let peers = new Map();
 let currentUsername = 'Survivor';
+let chatHistory = [];
+const CHAT_HISTORY_PATH = path.join(LAUNCHER_FILES_PATH, 'chathistory.json');
+
 
 // --- HELPERS ---
+
+function loadChatHistory() {
+    try {
+        if (fs.existsSync(CHAT_HISTORY_PATH)) {
+            const data = fs.readFileSync(CHAT_HISTORY_PATH, 'utf-8');
+            chatHistory = JSON.parse(data);
+        }
+    } catch (e) {
+        console.error('Failed to load chat history:', e);
+        chatHistory = [];
+    }
+}
+
+function saveChatHistory() {
+    try {
+        fs.writeFileSync(CHAT_HISTORY_PATH, JSON.stringify(chatHistory, null, 2));
+    } catch (e) {
+        console.error('Failed to save chat history:', e);
+    }
+}
+
+function appendToHistory(message) {
+    chatHistory.push(message);
+    if (chatHistory.length > 200) { // Limit history size
+        chatHistory.shift();
+    }
+    saveChatHistory();
+}
 
 function updatePeer(id, name, osUsername, address) {
   const now = Date.now();
@@ -24,7 +58,7 @@ function updatePeer(id, name, osUsername, address) {
   if (isNew) {
     console.log(`New peer discovered: ${name} (${osUsername}) [${id}] at ${address}`);
   }
-  peers.set(id, { name, osUsername, lastSeen: now, status: 'online' });
+  peers.set(id, { name, osUsername, address, lastSeen: now, status: 'online' });
   return isNew;
 }
 
@@ -95,7 +129,9 @@ function handleStartDiscovery() {
             break;
           case 'message':
             if (mainWindow && !mainWindow.isDestroyed()) {
-              mainWindow.webContents.send('lan:message-received', { id: data.id, name: data.name, osUsername: data.osUsername, text: data.text, timestamp: Date.now() });
+              const messageObject = { id: data.id, name: data.name, osUsername: data.osUsername, text: data.text, timestamp: Date.now() };
+              mainWindow.webContents.send('lan:message-received', messageObject);
+              appendToHistory(messageObject);
             }
             break;
           case 'disconnect':
@@ -146,22 +182,40 @@ function handleSetUsername() {
 function handleSendMessage() {
   ipcMain.handle('lan:send-message', (_, messageText) => {
     if (messageText && messageText.trim().length > 0) {
-      broadcastPacket('message', { text: messageText.trim() });
+      const trimmedMessage = messageText.trim();
+      broadcastPacket('message', { text: trimmedMessage });
+      const messageObject = { id: INSTANCE_ID, name: currentUsername, osUsername: OS_USERNAME, text: trimmedMessage, timestamp: Date.now() };
       if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('lan:message-received', { id: INSTANCE_ID, name: currentUsername, osUsername: OS_USERNAME, text: messageText.trim(), timestamp: Date.now() });
+          mainWindow.webContents.send('lan:message-received', messageObject);
       }
+      appendToHistory(messageObject);
     }
   });
+}
+
+function handleGetChatHistory() {
+    ipcMain.handle('lan:get-chat-history', () => chatHistory);
+}
+
+function handleClearChatHistory() {
+    ipcMain.handle('lan:clear-chat-history', () => {
+        chatHistory = [];
+        saveChatHistory();
+        return { success: true };
+    });
 }
 
 // --- EXPORTS ---
 
 exports.init = (mw) => {
   mainWindow = mw;
+  loadChatHistory();
   handleStartDiscovery();
   handleStopDiscovery();
   handleSetUsername();
   handleSendMessage();
+  handleGetChatHistory();
+  handleClearChatHistory();
 };
 
 exports.shutdown = () => {

@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('launcher', {
   saveSettings: (settings) => ipcRenderer.invoke('launcher:save-settings', settings),
   startGame: (settings) => ipcRenderer.invoke('launcher:start-game', settings),
   selectFile: () => ipcRenderer.invoke('launcher:select-file'),
+  getFirewallStatus: () => ipcRenderer.invoke('launcher:get-firewall-status'),
   onGameClosed: (callback) => ipcRenderer.on('game:closed', () => callback()),
 });
 
@@ -33,6 +34,8 @@ contextBridge.exposeInMainWorld('lan', {
   setUsername: (username) => ipcRenderer.invoke('lan:set-username', username),
   onPeerUpdate: (callback) => ipcRenderer.on('lan:peer-update', (_e, peers) => callback(peers)),
   onMessageReceived: (callback) => ipcRenderer.on('lan:message-received', (_e, message) => callback(message)),
+  getChatHistory: () => ipcRenderer.invoke('lan:get-chat-history'),
+  clearChatHistory: () => ipcRenderer.invoke('lan:clear-chat-history'),
 });
 
 contextBridge.exposeInMainWorld('backup', {

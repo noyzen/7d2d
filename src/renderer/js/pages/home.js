@@ -23,6 +23,27 @@ async function updateHomePageStats() {
     }
 }
 
+async function displayFirewallStatus() {
+    const card = getEl('firewall-stat-card');
+    const statusEl = getEl('firewall-status');
+    if (window.appInfo.platform !== 'win32') {
+        card.style.display = 'none';
+        return;
+    }
+    statusEl.textContent = 'Checking...';
+    const result = await window.launcher.getFirewallStatus();
+    if (result.status === 'ON') {
+        statusEl.textContent = 'ON';
+        statusEl.style.color = 'var(--error)';
+    } else if (result.status === 'OFF') {
+        statusEl.textContent = 'OFF';
+        statusEl.style.color = 'var(--primary)';
+    } else {
+        statusEl.textContent = 'ERROR';
+        statusEl.style.color = 'var(--fg-med)';
+    }
+}
+
 function renderHomePageLanStatus(peers) {
   const homeLanStatus = getEl('home-lan-status');
   if (!homeLanStatus) return;
@@ -32,16 +53,16 @@ function renderHomePageLanStatus(peers) {
     homeLanStatus.classList.remove('hidden');
     getEl('lan-player-count').textContent = onlinePeers.length;
     const homePlayerList = getEl('home-player-list');
-    homePlayerList.innerHTML = '';
+    homePlayerList.innerHTML = ''; // Clear spinner
     onlinePeers
       .sort((a,b) => a.name.localeCompare(b.name))
       .forEach(peer => {
-        const peerEl = document.createElement('span');
-        peerEl.className = 'home-player-name';
-        peerEl.textContent = peer.name;
+        const peerEl = document.createElement('div');
+        peerEl.className = 'home-player-item';
+        peerEl.innerHTML = `<span class="home-player-name">${peer.name}</span><span class="home-player-ip">${peer.address}</span>`;
         if (peer.id === selfId) {
           peerEl.classList.add('is-self');
-          peerEl.textContent += ' (You)';
+          peerEl.querySelector('.home-player-name').textContent += ' (You)';
         }
         homePlayerList.appendChild(peerEl);
     });
@@ -127,6 +148,7 @@ export function init() {
     
     updatePlayerNameVisibility();
     updateHomePageStats();
+    displayFirewallStatus();
     setupEventListeners();
     
     // Trigger an update for LAN status
