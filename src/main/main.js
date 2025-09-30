@@ -1,4 +1,5 @@
 
+
 const { app, BrowserWindow, Menu, globalShortcut, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -12,6 +13,12 @@ const lanIpc = require('./ipc/lan');
 const transferIpc = require('./ipc/transfer');
 
 let mainWindow;
+
+// The appId must match the one in package.json build config.
+// This is used for desktop shortcuts and Windows notifications.
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.noyzen.7d2dlauncher');
+}
 
 // Ensure single instance
 const gotTheLock = app.requestSingleInstanceLock();
@@ -48,8 +55,11 @@ function createDesktopShortcut() {
     }
     
     const packageJson = require(path.join(app.getAppPath(), 'package.json'));
-    const appId = packageJson.build.appId;
-    const productName = packageJson.build.productName || packageJson.name;
+    // In packaged apps, electron-builder strips the 'build' property from package.json.
+    // Therefore, appId must be defined explicitly here. It must match the appId in the build config.
+    const appId = 'com.noyzen.7d2dlauncher';
+    // app.name correctly reads productName from the packaged package.json, falling back to name.
+    const productName = app.name;
     const description = packageJson.description;
 
     const shortcutPath = path.join(app.getPath('desktop'), `${productName}.lnk`);
