@@ -22,11 +22,11 @@ function renderModCounts(enabledCount, disabledCount) {
     `;
 }
 
-function createModElement(mod) {
+function createModElement(mod, isDisplayedAsEnabled) {
   const modEl = document.createElement('div');
   modEl.className = 'mod-card';
   if (!mod.isValid) modEl.classList.add('invalid');
-  modEl.classList.toggle('enabled', mod.isEnabled);
+  modEl.classList.toggle('enabled', isDisplayedAsEnabled);
 
   modEl.innerHTML = `
     <div class="mod-info" title="${mod.description}">
@@ -43,38 +43,43 @@ function createModElement(mod) {
     <div class="mod-status-icon">
         <i class="fa-solid fa-circle-check"></i>
     </div>
-    <div class="mod-set-indicator"><i class="fa-solid fa-star"></i></div>
   `;
-  
-  const selectedSet = settings.modSets.find(s => s.name === selectedModSetName);
-  if (selectedSet && selectedSet.mods.includes(mod.folderName)) {
-      modEl.classList.add('in-set');
-  }
 
   modEl.addEventListener('click', async () => {
     if (modEl.classList.contains('processing')) return;
-    modEl.classList.add('processing');
 
-    const desiredState = !mod.isEnabled;
-    const result = await window.mods.toggle({ folderName: mod.folderName, enable: desiredState });
+    if (selectedModSetName === null) { // Manual Mode: Directly toggle the mod's file state
+        modEl.classList.add('processing');
+        const desiredState = !mod.isEnabled;
+        const result = await window.mods.toggle({ folderName: mod.folderName, enable: desiredState });
+        if (result.success) {
+            mod.isEnabled = desiredState;
+            modEl.classList.toggle('enabled', mod.isEnabled);
+            const enabledCount = allMods.filter(m => m.isEnabled).length;
+            renderModCounts(enabledCount, allMods.length - enabledCount);
+            renderModSetActions();
+            rendererEvents.emit('mods:changed');
+        } else {
+            alert(`Error toggling mod: ${result.error}`);
+        }
+        modEl.classList.remove('processing');
+    } else { // Mod Set Edit Mode: Modify the set definition in memory
+        const selectedSet = settings.modSets.find(s => s.name === selectedModSetName);
+        if (!selectedSet) return;
 
-    if (result.success) {
-      // Update local state without full reload
-      mod.isEnabled = desiredState;
-      modEl.classList.toggle('enabled', desiredState);
-      
-      // Recalculate counts and update UI components that depend on mod state
-      const enabledCount = allMods.filter(m => m.isEnabled).length;
-      const disabledCount = allMods.length - enabledCount;
-      renderModCounts(enabledCount, disabledCount);
-      renderModSetActions(); // Update "Apply Set" button state
-      
-      rendererEvents.emit('mods:changed');
-    } else {
-      alert(`Error toggling mod: ${result.error}`);
+        const modInSet = selectedSet.mods.includes(mod.folderName);
+        if (modInSet) {
+            selectedSet.mods = selectedSet.mods.filter(m => m !== mod.folderName);
+        } else {
+            selectedSet.mods.push(mod.folderName);
+        }
+        saveSettings();
+        
+        // Rerender UI components to reflect the change in the set definition
+        renderModLists();
+        renderModSets();
+        renderModSetActions();
     }
-    
-    modEl.classList.remove('processing');
   });
 
   return modEl;
@@ -207,8 +212,19 @@ function renderModLists() {
                mod.folderName.toLowerCase().includes(query);
     });
 
+    // Determine which set of mods to use for display
+    const selectedSetData = settings.modSets.find(s => s.name === selectedModSetName);
+    const setModsForDisplay = selectedSetData ? new Set(selectedSetData.mods) : null;
+
     if (filteredList.length > 0) {
-        filteredList.forEach(mod => listEl.appendChild(createModElement(mod)));
+        filteredList.forEach(mod => {
+            // In manual mode, use the actual mod.isEnabled state.
+            // In set mode, check if the mod is in the selected set's list.
+            const isDisplayedAsEnabled = (selectedModSetName === null)
+                ? mod.isEnabled
+                : setModsForDisplay.has(mod.folderName);
+            listEl.appendChild(createModElement(mod, isDisplayedAsEnabled));
+        });
     } else {
         listEl.innerHTML = `<p class="no-mods">No mods found.</p>`;
     }

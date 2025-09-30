@@ -366,20 +366,6 @@
     transform: scale(1.1);
 }
 
-.mod-set-indicator {
-    display: none;
-    position: absolute;
-    bottom: 8px;
-    left: 8px;
-    color: var(--primary);
-    opacity: 0.5;
-    font-size: 0.8rem;
-}
-.mod-card.in-set .mod-set-indicator {
-    display: block;
-}
-
-
 /* MOD INFO - REWORKED */
 .mod-info {
     flex-grow: 1; /* Take up available space */
