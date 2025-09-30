@@ -283,6 +283,7 @@
     grid-template-columns: 1fr;
     gap: 10px;
     padding: 5px;
+    align-content: start;
 }
 
 /* MOD CARD - REWORKED */
