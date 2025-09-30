@@ -166,7 +166,7 @@
 .status-dot.online { background-color: var(--primary); box-shadow: 0 0 5px var(--primary-glow); }
 .status-dot.offline { background-color: #666; }
 .player-name-container { display: flex; flex-direction: column; overflow: hidden; }
-.player-name, .player-os-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .player-os-name { font-size: 0.8rem; color: var(--fg-med); white-space: normal; word-break: break-all; }
 .chat-main { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
 .chat-messages { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }

@@ -28,20 +28,31 @@ const CHAT_HISTORY_PATH = path.join(LAUNCHER_FILES_PATH, 'chathistory.json');
 
 function getLocalIp() {
     const networkInterfaces = os.networkInterfaces();
+    const ips = {
+        '192.168.': [],
+        '10.': [],
+        '172.': []
+    };
+
     for (const interfaceName in networkInterfaces) {
         const networkInterface = networkInterfaces[interfaceName];
         for (const interfaceInfo of networkInterface) {
             if (interfaceInfo.family === 'IPv4' && !interfaceInfo.internal) {
-                if (
-                    interfaceInfo.address.startsWith('192.168.') ||
-                    interfaceInfo.address.startsWith('10.') ||
-                    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(interfaceInfo.address)
-                ) {
-                    return interfaceInfo.address; // Return first private IP found
+                if (interfaceInfo.address.startsWith('192.168.')) {
+                    ips['192.168.'].push(interfaceInfo.address);
+                } else if (interfaceInfo.address.startsWith('10.')) {
+                    ips['10.'].push(interfaceInfo.address);
+                } else if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(interfaceInfo.address)) {
+                    ips['172.'].push(interfaceInfo.address);
                 }
             }
         }
     }
+
+    if (ips['192.168.'].length > 0) return ips['192.168.'][0];
+    if (ips['10.'].length > 0) return ips['10.'][0];
+    if (ips['172.'].length > 0) return ips['172.'][0];
+
     return null; // No private IP found
 }
 
