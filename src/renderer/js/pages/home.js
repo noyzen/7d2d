@@ -1,16 +1,18 @@
 import { settings, saveSettings } from '../state.js';
 import { rendererEvents } from '../events.js';
+import { showHostSelectionPrompt } from '../ui.js';
 
 let selfId = null;
 let firewallCheckInterval = null;
 let subscriptions = [];
 let knownPeerIds = new Set();
+let allPeers = [];
 
 // --- HELPERS ---
 function getEl(id) { return document.getElementById(id); }
 
 async function checkAndDisplayFirewallWarning() {
-    const container = document.getElementById('firewall-warning-container');
+    const container = getEl('firewall-warning-container');
     if (!container || window.appInfo.platform !== 'win32') return;
 
     const result = await window.launcher.getFirewallStatus();
@@ -78,6 +80,7 @@ async function displayFirewallStatus() {
 }
 
 function renderHomePageLanStatus(peers) {
+  allPeers = peers || [];
   const homeLanStatus = getEl('home-lan-status');
   if (!homeLanStatus) return;
   
@@ -105,13 +108,13 @@ function renderHomePageLanStatus(peers) {
         peerEl.innerHTML = `
             <div class="status-dot online"></div>
             <div class="home-player-name-container">
-                <span class="home-player-name">${peer.name}</span>
+                <span class="home-player-name">${peer.name} ${peer.isSharing ? ' <i class="fa-solid fa-share-from-square" title="Sharing Game Files"></i>' : ''}</span>
                 <span class="home-player-os-name">${peer.osUsername || ''} - ${peer.address || '...'}</span>
             </div>
         `;
         if (peer.id === selfId) {
           peerEl.classList.add('is-self');
-          peerEl.querySelector('.home-player-name').textContent += ' (You)';
+          peerEl.querySelector('.home-player-name').innerHTML += ' (You)';
         }
         homePlayerList.appendChild(peerEl);
     });
@@ -120,6 +123,11 @@ function renderHomePageLanStatus(peers) {
     homeLanStatus.classList.add('hidden');
     knownPeerIds = new Set();
   }
+
+  // Handle Download Button visibility
+  const downloadBtn = getEl('download-game-btn');
+  const sharingPeers = peers.filter(p => p.isSharing && p.id !== selfId);
+  downloadBtn.style.display = sharingPeers.length > 0 ? 'flex' : 'none';
 }
 
 function saveAndExitEditMode() {
@@ -155,6 +163,33 @@ function setupEventListeners() {
             if (settings.playMusic) getEl('bgm').muted = false;
         } else if (result.action === 'quitting') {
             startGameBtn.querySelector('span').textContent = 'EXITING...';
+        }
+    });
+
+    getEl('download-game-btn').addEventListener('click', async () => {
+        const sharingPeers = allPeers.filter(p => p.isSharing && p.id !== selfId);
+        if (sharingPeers.length === 0) return;
+
+        const selection = await showHostSelectionPrompt(sharingPeers);
+        if (!selection) return;
+
+        const { host, type } = selection;
+        const confirmMessage = type === 'full'
+            ? 'DANGER!\n\nThis will DELETE ALL existing game files in this folder (except the launcher itself) and replace them with files from the host.\n\nThis action cannot be undone. Are you absolutely sure you want to continue?'
+            : 'This will replace your current `7d2dLauncher.exe` and `LauncherFiles` folder. The launcher will need to restart to apply the changes.\n\nContinue?';
+
+        if (confirm(confirmMessage)) {
+            // Show progress modal
+            const overlay = document.getElementById('transfer-progress-overlay');
+            document.getElementById('transfer-progress-title').textContent = type === 'full' ? 'Downloading Full Game...' : 'Downloading Launcher Update...';
+            document.getElementById('transfer-progress-content').classList.remove('hidden');
+            document.getElementById('transfer-complete-message').textContent = '';
+            document.getElementById('transfer-restart-btn').classList.add('hidden');
+            document.getElementById('transfer-close-btn').classList.add('hidden');
+            overlay.classList.remove('hidden');
+            
+            // Start download
+            window.transfer.downloadGame({ host, type });
         }
     });
 
@@ -227,4 +262,5 @@ export function unmount() {
     subscriptions.forEach(unsubscribe => unsubscribe());
     subscriptions = [];
     knownPeerIds = new Set();
+    allPeers = [];
 }

@@ -2,6 +2,7 @@ export let settings = {
   playMusic: true,
   exitOnLaunch: true,
   playerName: 'Survivor',
+  isSharingGame: false,
   modSets: [],
   configEditorRules: [],
   registryEditorRules: [],
@@ -81,6 +82,10 @@ export function applyInitialSettings(loadedSettings) {
 // by adding default values for new features.
 export function initDefaultSettings() {
     let changed = false;
+    if (settings.isSharingGame === undefined) {
+        settings.isSharingGame = false;
+        changed = true;
+    }
     if (!settings.configEditorRules) {
         settings.configEditorRules = [{
             id: Date.now(),

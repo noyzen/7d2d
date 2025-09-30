@@ -65,6 +65,12 @@ function setupEventListeners() {
         settings.exitOnLaunch = e.target.checked;
         saveSettings();
     });
+    
+    document.getElementById('setting-sharing-toggle').addEventListener('change', (e) => {
+        settings.isSharingGame = e.target.checked;
+        saveSettings();
+        window.transfer.toggleSharing(settings.isSharingGame);
+    });
 
     // Backup & Restore
     document.getElementById('backup-btn').addEventListener('click', async () => {
@@ -111,6 +117,7 @@ export function init() {
     // Set initial state of toggles
     document.getElementById('setting-music-toggle').checked = settings.playMusic ?? true;
     document.getElementById('setting-exit-toggle').checked = settings.exitOnLaunch ?? false;
+    document.getElementById('setting-sharing-toggle').checked = settings.isSharingGame ?? false;
     
     // Show registry backup section on Windows
     if (window.appInfo.platform === 'win32') {

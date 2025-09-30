@@ -47,3 +47,11 @@ contextBridge.exposeInMainWorld('backup', {
   startRegistryRestore: () => ipcRenderer.invoke('backup:start-registry-restore'),
   onProgress: (callback) => ipcRenderer.on('backup:progress', (_e, progress) => callback(progress)),
 });
+
+contextBridge.exposeInMainWorld('transfer', {
+    toggleSharing: (enable) => ipcRenderer.invoke('transfer:toggle-sharing', enable),
+    downloadGame: (args) => ipcRenderer.invoke('transfer:download-game', args),
+    restartForUpdate: () => ipcRenderer.invoke('transfer:restart-for-update'),
+    onProgress: (callback) => ipcRenderer.on('transfer:progress', (_e, progress) => callback(progress)),
+    onComplete: (callback) => ipcRenderer.on('transfer:complete', (_e, result) => callback(result)),
+});

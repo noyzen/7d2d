@@ -1,6 +1,7 @@
 import { settings, applyInitialSettings, initDefaultSettings } from './state.js';
 import { rendererEvents } from './events.js';
 import { incrementUnreadMessages } from './notifications.js';
+import { formatBytes } from './ui.js';
 
 // --- DOM ELEMENTS ---
 const minBtn = document.getElementById('min-btn');
@@ -108,6 +109,41 @@ function setupGlobalEventListeners() {
         }
         rendererEvents.emit('lan:message-received', message);
     });
+
+    // Transfer Listeners
+    window.transfer.onProgress((progress) => {
+        document.getElementById('transfer-progress-bar-inner').style.width = `${progress.totalSize > 0 ? (progress.downloadedSize / progress.totalSize) * 100 : 0}%`;
+        document.getElementById('transfer-progress-percentage').textContent = `${progress.totalSize > 0 ? Math.round((progress.downloadedSize / progress.totalSize) * 100) : 0}%`;
+        document.getElementById('transfer-progress-details').textContent = `(${progress.filesDone}/${progress.totalFiles}) ${progress.currentFile}`;
+        document.getElementById('transfer-progress-speed').textContent = `${formatBytes(progress.speed)}/s`;
+    });
+
+    window.transfer.onComplete((result) => {
+        const completeMessageEl = document.getElementById('transfer-complete-message');
+        document.getElementById('transfer-progress-content').classList.add('hidden');
+        if (result.success) {
+            completeMessageEl.textContent = result.type === 'launcher' 
+                ? 'Launcher files downloaded. Restart to apply the update.'
+                : 'Game download complete! You can now close this window.';
+            completeMessageEl.className = 'backup-result-message success';
+            if (result.type === 'launcher') {
+                document.getElementById('transfer-restart-btn').classList.remove('hidden');
+            } else {
+                document.getElementById('transfer-close-btn').classList.remove('hidden');
+            }
+        } else {
+            completeMessageEl.textContent = `Download failed: ${result.error}`;
+            completeMessageEl.className = 'backup-result-message error';
+            document.getElementById('transfer-close-btn').classList.remove('hidden');
+        }
+    });
+
+    document.getElementById('transfer-restart-btn').addEventListener('click', () => {
+        window.transfer.restartForUpdate();
+    });
+    document.getElementById('transfer-close-btn').addEventListener('click', () => {
+        document.getElementById('transfer-progress-overlay').classList.add('hidden');
+    });
 }
 
 
@@ -136,6 +172,10 @@ async function init() {
       window.lan.startDiscovery();
       window.lan.setUsername(settings.playerName || 'Survivor');
       lanChatStarted = true;
+  }
+  
+  if (settings.isSharingGame) {
+      window.transfer.toggleSharing(true);
   }
 
   // Load the initial page

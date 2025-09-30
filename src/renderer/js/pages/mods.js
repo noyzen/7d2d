@@ -54,6 +54,13 @@ function renderModSets() {
     updateModSetButtons();
 }
 
+function updateTabCounts() {
+    const enabledCountEl = getEl('enabled-mods-count');
+    const disabledCountEl = getEl('disabled-mods-count');
+    if (enabledCountEl) enabledCountEl.textContent = enabledMods.length;
+    if (disabledCountEl) disabledCountEl.textContent = disabledMods.length;
+}
+
 function renderModLists() {
     const listEl = getEl('mod-list');
     if (!listEl) return;
@@ -105,6 +112,7 @@ async function loadMods() {
         getEl('mod-list').innerHTML = '<p class="error-message">Could not load mods.</p>';
     }
     isLoading = false;
+    updateTabCounts();
     renderModLists();
 }
 

@@ -81,6 +81,30 @@
     </div>
   </div>
 
+  <div id="transfer-progress-overlay" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 600px;">
+        <h3 id="transfer-progress-title">Downloading Game...</h3>
+        <div id="transfer-progress-content">
+            <div class="backup-progress-container" style="display: flex; flex-direction: column; gap: 8px; margin-top: 15px;">
+                <div class="progress-info">
+                    <span id="transfer-progress-label">Initializing...</span>
+                    <span id="transfer-progress-percentage">0%</span>
+                </div>
+                <div class="progress-bar-outer">
+                    <div id="transfer-progress-bar-inner" class="progress-bar-inner"></div>
+                </div>
+                <div id="transfer-progress-details" class="progress-details" style="height: 1.2em;"></div>
+                <div id="transfer-progress-speed" class="progress-details" style="height: 1.2em;"></div>
+            </div>
+        </div>
+        <div id="transfer-complete-message" class="backup-result-message" style="margin-top: 20px;"></div>
+        <div class="modal-buttons" style="margin-top: 20px;">
+          <button id="transfer-close-btn" class="modal-btn cancel-btn hidden">Close</button>
+          <button id="transfer-restart-btn" class="modal-btn ok-btn hidden">Restart to Update</button>
+        </div>
+    </div>
+  </div>
+
   <script src="js/main.js" type="module"></script>
 </body>
 </html>

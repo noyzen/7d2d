@@ -61,8 +61,10 @@ export function showPrompt(title, text, defaultValue = '') {
     }
 
     titleEl.textContent = title;
-    textEl.textContent = text;
+    textEl.innerHTML = sanitizeText(text); // Use innerHTML in case text has simple formatting needs, but sanitize it.
     inputEl.value = defaultValue;
+    inputEl.style.display = 'block';
+
 
     overlay.classList.remove('hidden');
     inputEl.focus();
@@ -93,6 +95,73 @@ export function showPrompt(title, text, defaultValue = '') {
                 e.preventDefault();
                 cancelBtn.click();
             }
+        };
+    });
+}
+
+export function showHostSelectionPrompt(hosts) {
+    const overlay = document.getElementById('custom-prompt-overlay');
+    const titleEl = document.getElementById('custom-prompt-title');
+    const textEl = document.getElementById('custom-prompt-text');
+    const inputEl = document.getElementById('custom-prompt-input');
+    const okBtn = document.getElementById('custom-prompt-ok-btn');
+    const cancelBtn = document.getElementById('custom-prompt-cancel-btn');
+
+    titleEl.textContent = 'Select a Host to Download From';
+    inputEl.style.display = 'none';
+
+    let hostListHtml = '<div class="host-list">';
+    hosts.forEach((host, index) => {
+        hostListHtml += `
+            <label class="host-item" for="host-radio-${index}">
+                <input type="radio" name="host-selection" id="host-radio-${index}" value="${host.id}">
+                <div class="player-name-container">
+                    <span class="player-name">${sanitizeText(host.name)}</span>
+                    <span class="player-os-name">${sanitizeText(host.osUsername)} - ${sanitizeText(host.address)}</span>
+                </div>
+            </label>
+        `;
+    });
+    hostListHtml += '</div>';
+
+    const optionsHtml = `
+        <div class="download-options">
+            <label for="download-type-full">
+                <input type="radio" name="download-type" id="download-type-full" value="full" checked>
+                Full Game (Overwrites current game folder)
+            </label>
+            <label for="download-type-launcher">
+                <input type="radio" name="download-type" id="download-type-launcher" value="launcher">
+                Launcher Only (Updates launcher and its files)
+            </label>
+        </div>
+    `;
+
+    textEl.innerHTML = `<div id="custom-prompt-content">${hostListHtml}${optionsHtml}</div>`;
+    overlay.classList.remove('hidden');
+
+    return new Promise((resolve) => {
+        const close = (value) => {
+            overlay.classList.add('hidden');
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            textEl.innerHTML = '';
+            resolve(value);
+        };
+
+        okBtn.onclick = () => {
+            const selectedHostId = document.querySelector('input[name="host-selection"]:checked')?.value;
+            const selectedType = document.querySelector('input[name="download-type"]:checked')?.value;
+            if (selectedHostId && selectedType) {
+                const selectedHost = hosts.find(h => h.id === selectedHostId);
+                close({ host: selectedHost, type: selectedType });
+            } else {
+                alert('Please select a host and a download type.');
+            }
+        };
+
+        cancelBtn.onclick = () => {
+            close(null);
         };
     });
 }

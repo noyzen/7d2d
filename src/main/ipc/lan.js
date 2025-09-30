@@ -24,6 +24,9 @@ let currentUsername = 'Survivor';
 let chatHistory = [];
 const CHAT_HISTORY_PATH = path.join(LAUNCHER_FILES_PATH, 'chathistory.json');
 
+// --- STATE FOR TRANSFER ---
+let isSharingGame = false;
+let fileServerPort = null;
 
 // --- HELPERS ---
 
@@ -115,13 +118,13 @@ function appendToHistory(message) {
     saveChatHistory();
 }
 
-function updatePeer(id, name, osUsername, address) {
+function updatePeer(id, name, osUsername, address, isSharing, sharePort) {
   const now = Date.now();
   const isNew = !peers.has(id);
   if (isNew) {
     console.log(`New peer discovered: ${name} (${osUsername}) [${id}] at ${address}`);
   }
-  peers.set(id, { name, osUsername, address, lastSeen: now, status: 'online' });
+  peers.set(id, { name, osUsername, address, lastSeen: now, status: 'online', isSharing, sharePort });
   return isNew;
 }
 
@@ -139,6 +142,8 @@ function broadcastPacket(type, payload) {
     id: INSTANCE_ID,
     name: currentUsername,
     osUsername: OS_USERNAME,
+    isSharing: isSharingGame,
+    sharePort: fileServerPort,
     ...payload
   }));
   lanSocket.send(message, 0, message.length, LAN_PORT, broadcastAddress, (err) => {
@@ -202,7 +207,7 @@ function handleStartDiscovery() {
 
         switch (data.type) {
           case 'heartbeat':
-            if (updatePeer(data.id, data.name, data.osUsername, rinfo.address)) {
+            if (updatePeer(data.id, data.name, data.osUsername, rinfo.address, data.isSharing, data.sharePort)) {
               broadcastPacket('heartbeat'); // Announce presence to new peer
             }
             sendPeerUpdate();
@@ -311,9 +316,19 @@ exports.shutdown = () => {
 
 exports.setUsername = (username) => {
   currentUsername = username;
-  updatePeer(INSTANCE_ID, currentUsername, OS_USERNAME, localIpAddress || 'local');
+  updatePeer(INSTANCE_ID, currentUsername, OS_USERNAME, localIpAddress || 'local', isSharingGame, fileServerPort);
   sendPeerUpdate();
   broadcastPacket('heartbeat');
+};
+
+exports.setSharingState = (isSharing, port) => {
+    isSharingGame = isSharing;
+    fileServerPort = port;
+    // Update self in peer list immediately
+    updatePeer(INSTANCE_ID, currentUsername, OS_USERNAME, localIpAddress || 'local', isSharingGame, fileServerPort);
+    sendPeerUpdate();
+    // Broadcast the change immediately
+    broadcastPacket('heartbeat');
 };
 
 exports.getCurrentUsername = () => currentUsername;

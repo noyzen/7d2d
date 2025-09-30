@@ -7,6 +7,7 @@ const launcherIpc = require('./ipc/launcher');
 const modsIpc = require('./ipc/mods');
 const backupIpc = require('./ipc/backup');
 const lanIpc = require('./ipc/lan');
+const transferIpc = require('./ipc/transfer');
 
 let mainWindow;
 
@@ -62,6 +63,7 @@ function createWindow() {
   modsIpc.init(mainWindow);
   backupIpc.init(mainWindow);
   lanIpc.init(mainWindow);
+  transferIpc.init(mainWindow);
 }
 
 app.on('ready', () => {
@@ -76,6 +78,7 @@ app.on('ready', () => {
 
 app.on('will-quit', () => {
   lanIpc.shutdown();
+  transferIpc.shutdown();
   globalShortcut.unregisterAll();
 });
 
