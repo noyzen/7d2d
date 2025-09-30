@@ -124,6 +124,14 @@ function setupGlobalEventListeners() {
     });
 
     window.transfer.onComplete((result) => {
+        if (result.error === 'Download cancelled by user.') {
+            document.getElementById('transfer-progress-overlay').classList.add('hidden');
+            if (settings.playMusic && bgm.paused) {
+                bgm.play().catch(e => console.error("Audio playback failed:", e));
+            }
+            return;
+        }
+
         const completeMessageEl = document.getElementById('transfer-complete-message');
         document.getElementById('transfer-progress-content').classList.add('hidden');
         document.getElementById('transfer-cancel-btn').classList.add('hidden');

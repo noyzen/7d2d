@@ -196,8 +196,8 @@ function handleToggleSharing() {
 
 function handleCancelDownload() {
     ipcMain.handle('transfer:cancel-download', () => {
+        currentDownload.isCancelled = true;
         if (currentDownload.request) {
-            currentDownload.isCancelled = true;
             currentDownload.request.destroy(); // Abort the current HTTP request
         }
         return { success: true };
@@ -283,7 +283,7 @@ function handleDownloadGame() {
                             res.on('data', chunk => {
                                 downloadedSize += chunk.length;
                                 const now = Date.now();
-                                if (now - lastProgressTime > 250) {
+                                if (now - lastProgressTime > 250) { // Throttle updates
                                     const speed = (downloadedSize - lastDownloadedSize) / ((now - lastProgressTime) / 1000);
                                     lastProgressTime = now;
                                     lastDownloadedSize = downloadedSize;
@@ -291,6 +291,14 @@ function handleDownloadGame() {
                                         totalSize, downloadedSize, totalFiles: filesToDownload.length, filesDone: i,
                                         currentFile: file.path, speed
                                     });
+                                    // Report progress to host
+                                    const progressPercentage = totalSize > 0 ? Math.round((downloadedSize / totalSize) * 100) : 0;
+                                    const progressReq = http.request({
+                                        hostname: host.address, port: host.sharePort, path: '/report-progress', method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' }
+                                    });
+                                    progressReq.on('error', (e) => console.error('Failed to report progress to host:', e.message));
+                                    progressReq.end(JSON.stringify({ progress: progressPercentage }));
                                 }
                             });
                             res.pipe(fileStream);
