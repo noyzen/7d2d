@@ -186,9 +186,17 @@ input:checked + .slider:before { transform: translateX(22px); }
 
 /* --- ERROR OVERLAY --- */
 #error-overlay {
-  position: fixed; inset: 0; z-index: 5000;
-  background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(5px);
-  display: none; align-items: center; justify-content: center;
+  position: fixed;
+  top: 32px; /* Start below the titlebar */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5000;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+  display: none;
+  align-items: center;
+  justify-content: center;
 }
 .error-card {
   background: var(--bg-med); border: 1px solid var(--error);
