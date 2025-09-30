@@ -54,7 +54,7 @@ function createDesktopShortcut() {
       target: targetPath,
       cwd: path.dirname(targetPath),
       description: 'A feature-rich game launcher for 7 Days to Die.',
-      icon: path.join(__dirname, '../../appicon.png'),
+      icon: path.join(CWD, 'appicon.png'),
       iconIndex: 0,
   };
 
@@ -84,7 +84,7 @@ function createWindow() {
     height: mainWindowState.height,
     minWidth: 940,
     minHeight: 600,
-    icon: path.join(__dirname, '../../appicon.png'),
+    icon: path.join(CWD, 'appicon.png'),
     frame: false,
     titleBarStyle: 'hidden',
     backgroundColor: '#0a0a0a',
