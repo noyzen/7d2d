@@ -33,7 +33,6 @@ function createModElement(mod) {
       modEl.classList.add('in-set');
   }
 
-  // NOTE: Switched from pseudo-element to a real element for icon stability
   modEl.innerHTML = `
     <div class="mod-info" title="${mod.description}">
       <h3 class="mod-title">
@@ -55,34 +54,16 @@ function createModElement(mod) {
     if (modEl.classList.contains('processing')) return;
     modEl.classList.add('processing');
 
-    await window.mods.toggle({ folderName: mod.folderName, enable: !mod.isEnabled });
-    
-    // Manually update the state of the mod in our local array
-    const modInState = allMods.find(m => m.folderName === mod.folderName);
-    if (modInState) {
-        modInState.isEnabled = !modInState.isEnabled;
+    const result = await window.mods.toggle({ folderName: mod.folderName, enable: !mod.isEnabled });
+    if (!result.success) {
+      alert(`Error toggling mod: ${result.error}`);
     }
     
-    const enabledCount = allMods.filter(m => m.isEnabled).length;
-    renderModCounts(enabledCount, allMods.length - enabledCount);
-
-    // If we were viewing a set, we have now deviated from it.
-    const wasInSetMode = selectedModSetName !== null;
-    if (wasInSetMode) {
-        selectedModSetName = null;
-        renderModSets(); // Updates which set is active
-        renderModSetActions(); // Updates buttons
-        // Remove `in-set` class from all cards since we are in manual mode now.
-        document.querySelectorAll('.mod-card.in-set').forEach(card => card.classList.remove('in-set'));
-    }
-    
-    // Update the visual state of just this card
-    modEl.classList.toggle('enabled', modInState.isEnabled);
-
+    // Forcing a full reload is the simplest way to ensure UI is consistent after any operation
+    await loadMods(); 
     rendererEvents.emit('mods:changed');
     
-    // Allow re-clicking after a short delay
-    setTimeout(() => modEl.classList.remove('processing'), 100);
+    modEl.classList.remove('processing');
   });
 
   return modEl;
@@ -94,7 +75,6 @@ function renderModSets() {
     
     listEl.innerHTML = '';
 
-    // "Manual Configuration" Card
     const manualCard = document.createElement('div');
     manualCard.className = 'mod-set-card';
     manualCard.dataset.setName = 'manual';
@@ -112,7 +92,6 @@ function renderModSets() {
     });
     listEl.appendChild(manualCard);
 
-    // User-created Mod Sets
     (settings.modSets || []).forEach(set => {
         const setCard = document.createElement('div');
         setCard.className = 'mod-set-card';
@@ -140,7 +119,7 @@ function renderModSets() {
             settings.modSets = settings.modSets.filter(s => s.name !== set.name);
             saveSettings();
             if (selectedModSetName === set.name) {
-                selectedModSetName = null; // Revert to manual if active set is deleted
+                selectedModSetName = null;
             }
             renderModSets();
             renderModSetActions();
@@ -151,7 +130,7 @@ function renderModSets() {
 }
 
 function isSetApplied() {
-    if (selectedModSetName === null) return true; // Manual is always "applied"
+    if (selectedModSetName === null) return true;
     const selectedSet = settings.modSets.find(s => s.name === selectedModSetName);
     if (!selectedSet) return false;
 
@@ -234,14 +213,17 @@ async function applyModList(modFolderNames, confirmationMessage) {
     if (!result.success) {
         alert(`Error applying mods: ${result.error}`);
     }
+    if (result.warnings) {
+        alert(`The mod set was applied, but with some issues:\n- ${result.warnings.join('\n- ')}`);
+    }
     await loadMods();
     rendererEvents.emit('mods:changed');
 }
 
 async function loadMods() {
     isLoading = true;
-    renderModLists(); // Show spinner
-    renderModCounts(0, 0); // Reset counts while loading
+    renderModLists();
+    renderModCounts(0, 0);
     try {
         const { enabled, disabled } = await window.mods.get();
         const enabledWithState = enabled.map(m => ({ ...m, isEnabled: true }));
@@ -257,7 +239,7 @@ async function loadMods() {
     isLoading = false;
     renderModLists();
     renderModSets();
-    renderModSetActions(); // Update apply button state
+    renderModSetActions();
 }
 
 function setupEventListeners() {
@@ -298,7 +280,5 @@ function setupEventListeners() {
 
 export function init() {
     setupEventListeners();
-    renderModSets();
-    renderModSetActions();
     loadMods();
 }
