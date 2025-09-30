@@ -269,9 +269,10 @@ function handleDownloadGame() {
             return { success: true };
         } catch (e) {
             console.error('Download failed:', e);
-            const errorMessage = e.message === 'requires-admin' ? e.message : `An unexpected error occurred: ${e.message}`;
-            mainWindow?.webContents.send('transfer:complete', { success: false, error: errorMessage });
-            return { success: false, error: e.message };
+            const isPermissionError = e.code === 'EPERM' || e.code === 'EBUSY' || (e.message && (e.message.toLowerCase().includes('permission') || e.message.toLowerCase().includes('access is denied')));
+            const finalError = isPermissionError ? 'requires-admin' : e.message;
+            mainWindow?.webContents.send('transfer:complete', { success: false, error: finalError });
+            return { success: false, error: finalError };
         }
     });
 }

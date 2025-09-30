@@ -1,6 +1,6 @@
 import { settings, saveSettings } from '../state.js';
 import { rendererEvents } from '../events.js';
-import { showHostSelectionPrompt, showConfirmationPrompt, sanitizeText } from '../ui.js';
+import { showHostSelectionPrompt, showConfirmationPrompt, sanitizeText, showAlert } from '../ui.js';
 
 let selfId = null;
 let firewallCheckInterval = null;
@@ -159,8 +159,11 @@ async function handleDownloadError(error) {
             await window.launcher.relaunchAsAdmin();
         }
     } else {
-        // Handle other errors normally
-        alert(`An unexpected error occurred during download: ${error}`);
+        await showAlert(
+            'Download Failed',
+            `<p>An unexpected error occurred during the download process:</p>
+             <div class="modal-path-display" style="color: var(--error);">${sanitizeText(error)}</div>`
+        );
     }
 }
 

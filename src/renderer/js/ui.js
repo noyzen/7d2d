@@ -150,6 +150,52 @@ export function showConfirmationPrompt(title, htmlContent, confirmText = 'Confir
     });
 }
 
+/**
+ * Shows a themed alert dialog.
+ * @param {string} title - The title for the dialog.
+ * @param {string} htmlContent - The HTML content for the dialog's body.
+ * @returns {Promise<void>} A promise that resolves when the user closes the dialog.
+ */
+export function showAlert(title, htmlContent) {
+    const overlay = document.getElementById('confirmation-overlay');
+    const titleEl = document.getElementById('confirmation-title');
+    const textEl = document.getElementById('confirmation-text');
+    const okBtn = document.getElementById('confirmation-ok-btn');
+    const cancelBtn = document.getElementById('confirmation-cancel-btn');
+
+    if (!overlay || !titleEl || !textEl || !okBtn || !cancelBtn) {
+        return Promise.reject('Alert modal elements not found in the DOM.');
+    }
+
+    titleEl.textContent = title;
+    textEl.innerHTML = htmlContent;
+    okBtn.textContent = 'OK';
+    okBtn.className = 'modal-btn ok-btn'; // Ensure it's not the red confirm style
+    cancelBtn.style.display = 'none';
+
+    overlay.classList.remove('hidden');
+    okBtn.focus();
+
+    return new Promise((resolve) => {
+        const close = () => {
+            overlay.classList.add('hidden');
+            okBtn.onclick = null;
+            document.onkeydown = null;
+            cancelBtn.style.display = 'block'; // Restore for next use
+            resolve();
+        };
+
+        okBtn.onclick = close;
+        
+        document.onkeydown = (e) => {
+            if (e.key === 'Enter' || e.key === 'Escape') {
+                e.preventDefault();
+                okBtn.click();
+            }
+        };
+    });
+}
+
 
 export function showHostSelectionPrompt(hosts) {
     const overlay = document.getElementById('custom-prompt-overlay');
