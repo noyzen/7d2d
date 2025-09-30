@@ -26,6 +26,12 @@ const CHAT_HISTORY_PATH = path.join(LAUNCHER_FILES_PATH, 'chathistory.json');
 
 // --- HELPERS ---
 
+/**
+ * CRITICAL: This function's purpose is to find the user's LOCAL AREA NETWORK (LAN) IP address.
+ * It is designed for an offline, local-only chat feature. It MUST ONLY return a private IP address
+ * (e.g., 192.168.x.x) and should prioritize physical adapters (Ethernet, Wi-Fi) over
+ * virtual ones (VPNs, etc.). DO NOT change this to detect public/remote IP addresses.
+ */
 function getLocalIp() {
     const interfaces = os.networkInterfaces();
     const candidates = [];
