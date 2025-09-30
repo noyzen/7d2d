@@ -9,6 +9,19 @@ let selectedModSetName = null; // null means "Manual Configuration"
 
 function getEl(id) { return document.getElementById(id); }
 
+function renderModCounts(enabledCount, disabledCount) {
+    const countsEl = getEl('mod-counts');
+    if (!countsEl) return;
+    countsEl.innerHTML = `
+        <div class="mod-count-item enabled" title="Enabled Mods">
+            <i class="fa-solid fa-circle-check"></i> <span class="count">${enabledCount}</span>
+        </div>
+        <div class="mod-count-item disabled" title="Disabled Mods">
+            <i class="fa-solid fa-power-off"></i> <span class="count">${disabledCount}</span>
+        </div>
+    `;
+}
+
 function createModElement(mod) {
   const modEl = document.createElement('div');
   modEl.className = 'mod-card';
@@ -49,6 +62,9 @@ function createModElement(mod) {
     if (modInState) {
         modInState.isEnabled = !modInState.isEnabled;
     }
+    
+    const enabledCount = allMods.filter(m => m.isEnabled).length;
+    renderModCounts(enabledCount, allMods.length - enabledCount);
 
     // If we were viewing a set, we have now deviated from it.
     const wasInSetMode = selectedModSetName !== null;
@@ -225,14 +241,17 @@ async function applyModList(modFolderNames, confirmationMessage) {
 async function loadMods() {
     isLoading = true;
     renderModLists(); // Show spinner
+    renderModCounts(0, 0); // Reset counts while loading
     try {
         const { enabled, disabled } = await window.mods.get();
         const enabledWithState = enabled.map(m => ({ ...m, isEnabled: true }));
         const disabledWithState = disabled.map(m => ({ ...m, isEnabled: false }));
         allMods = [...enabledWithState, ...disabledWithState].sort((a, b) => a.name.localeCompare(b.name));
+        renderModCounts(enabled.length, disabled.length);
     } catch (error) {
         console.error("Failed to load mods:", error);
         allMods = [];
+        renderModCounts(0, 0);
         getEl('mod-list').innerHTML = '<p class="error-message">Could not load mods.</p>';
     }
     isLoading = false;

@@ -63,6 +63,26 @@ const readModsFromDir = (dirPath) => {
     .filter(Boolean);
 };
 
+/**
+ * Recursively copies a directory.
+ * @param {string} source - The source directory path.
+ * @param {string} destination - The destination directory path.
+ */
+async function copyDirectoryRecursive(source, destination) {
+  await fs.promises.mkdir(destination, { recursive: true });
+  const entries = await fs.promises.readdir(source, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const srcPath = path.join(source, entry.name);
+    const destPath = path.join(destination, entry.name);
+    if (entry.isDirectory()) {
+      await copyDirectoryRecursive(srcPath, destPath);
+    } else {
+      await fs.promises.copyFile(srcPath, destPath);
+    }
+  }
+}
+
 // --- IPC HANDLERS ---
 
 function handleGetMods() {
@@ -87,13 +107,26 @@ function handleToggleMod() {
         return { success: false, error: `Source mod folder not found at ${sourcePath}` };
       }
       if (fs.existsSync(destPath)) {
-        // This is an unexpected state where a mod with the same folder name exists in both directories.
-        // Prevent overwrite to avoid data loss.
         return { success: false, error: `Destination conflict: a mod named '${folderName}' already exists.` };
       }
       
-      await fs.promises.rename(sourcePath, destPath);
-      return { success: true };
+      // Perform the safe copy-then-delete operation
+      try {
+        await copyDirectoryRecursive(sourcePath, destPath);
+        await fs.promises.rm(sourcePath, { recursive: true, force: true });
+        return { success: true };
+      } catch (operationError) {
+        console.error(`Safe mod toggle operation failed for '${folderName}':`, operationError);
+        // Attempt to clean up the failed copy
+        if (fs.existsSync(destPath)) {
+          await fs.promises.rm(destPath, { recursive: true, force: true }).catch(cleanupError => {
+            console.error(`Failed to cleanup destination directory '${destPath}':`, cleanupError);
+          });
+        }
+        // Re-throw the original error to be caught by the outer block
+        throw operationError;
+      }
+
     } catch (e) {
       console.error('Failed to toggle mod:', e);
       return { success: false, error: e.message };
@@ -102,7 +135,8 @@ function handleToggleMod() {
 }
 
 /**
- * Safely moves a directory, checking for existence and conflicts.
+ * Safely moves a directory by copying it, then deleting the source.
+ * This is more robust against interruptions than a simple rename.
  * @param {string} source - The full path to the source directory.
  * @param {string} dest - The full path to the destination directory.
  * @param {string} modName - The name of the mod folder for error messages.
@@ -114,7 +148,21 @@ async function safeMove(source, dest, modName) {
     if (fs.existsSync(dest)) {
         throw new Error(`Cannot move mod '${modName}', a folder with the same name already exists in the destination.`);
     }
-    await fs.promises.rename(source, dest);
+    
+    try {
+        await copyDirectoryRecursive(source, dest);
+        await fs.promises.rm(source, { recursive: true, force: true });
+    } catch (operationError) {
+        console.error(`Safe move operation failed for '${modName}':`, operationError);
+        // Attempt to clean up the failed copy
+        if (fs.existsSync(dest)) {
+            await fs.promises.rm(dest, { recursive: true, force: true }).catch(cleanupError => {
+                console.error(`Failed to cleanup destination directory '${dest}':`, cleanupError);
+            });
+        }
+        // Re-throw the original error with a more user-friendly context
+        throw new Error(`Failed to move mod '${modName}': ${operationError.message}`);
+    }
 }
 
 function handleApplyModSet() {
