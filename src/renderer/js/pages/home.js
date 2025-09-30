@@ -206,6 +206,11 @@ function setupEventListeners() {
             if (settings.playMusic) getEl('bgm').muted = false;
         } else if (result.action === 'quitting') {
             startGameBtn.querySelector('span').textContent = 'EXITING...';
+        } else { // Game is minimized, pause renderer-side background tasks
+            if (firewallCheckInterval) {
+                clearInterval(firewallCheckInterval);
+                firewallCheckInterval = null;
+            }
         }
     });
 
@@ -250,6 +255,11 @@ function setupEventListeners() {
         if(startGameBtn) {
             startGameBtn.disabled = false;
             startGameBtn.querySelector('span').textContent = 'START GAME';
+        }
+        // Resume firewall check
+        if (!firewallCheckInterval) {
+            displayFirewallStatus(); // Run once immediately
+            firewallCheckInterval = setInterval(displayFirewallStatus, 15000);
         }
     });
 

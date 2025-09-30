@@ -375,3 +375,19 @@ exports.init = (mw) => {
 exports.shutdown = () => {
     stopFileServer();
 };
+
+exports.pause = () => {
+    if (downloadersUpdateInterval) {
+        clearInterval(downloadersUpdateInterval);
+        downloadersUpdateInterval = null;
+        console.log('File transfer host updates paused.');
+    }
+};
+
+exports.resume = () => {
+    // only if server is running and interval is not
+    if (fileServer && !downloadersUpdateInterval) {
+        downloadersUpdateInterval = setInterval(broadcastDownloadersUpdate, 2000);
+        console.log('File transfer host updates resumed.');
+    }
+};

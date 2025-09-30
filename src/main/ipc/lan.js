@@ -335,3 +335,24 @@ exports.setSharingState = (isSharing, port) => {
 };
 
 exports.getCurrentUsername = () => currentUsername;
+
+exports.pause = () => {
+    if (broadcastInterval) clearInterval(broadcastInterval);
+    if (peerCheckInterval) clearInterval(peerCheckInterval);
+    broadcastInterval = null;
+    peerCheckInterval = null;
+    console.log('LAN discovery paused.');
+};
+
+exports.resume = () => {
+    // Prevent resuming if socket isn't active or if it's already running
+    if (!lanSocket || broadcastInterval) return;
+
+    console.log('LAN discovery resumed.');
+    // Send a burst of heartbeats on resume for quick re-discovery.
+    setTimeout(() => broadcastPacket('heartbeat'), 100);
+    setTimeout(() => broadcastPacket('heartbeat'), 500);
+
+    broadcastInterval = setInterval(() => broadcastPacket('heartbeat'), BROADCAST_INTERVAL);
+    peerCheckInterval = setInterval(checkPeers, BROADCAST_INTERVAL);
+};

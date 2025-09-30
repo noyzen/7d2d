@@ -9,6 +9,7 @@ const {
   CWD,
 } = require('../constants');
 const lanIpc = require('./lan');
+const transferIpc = require('./transfer');
 
 let mainWindow;
 let gameProcess = null;
@@ -298,6 +299,10 @@ function handleStartGame() {
             return { success: true, action: 'quitting' };
           }
       
+          // Pause background tasks to reduce resource usage while game is running
+          lanIpc.pause();
+          transferIpc.pause();
+
           mainWindow?.minimize();
           
           child.on('exit', (code) => {
@@ -306,6 +311,11 @@ function handleStartGame() {
             if (mainWindow && !mainWindow.isDestroyed()) {
               if (mainWindow.isMinimized()) mainWindow.restore();
               mainWindow.focus();
+
+              // Resume background tasks
+              lanIpc.resume();
+              transferIpc.resume();
+              
               mainWindow.webContents.send('game:closed');
             }
           });
