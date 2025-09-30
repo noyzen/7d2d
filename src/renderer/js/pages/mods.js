@@ -28,11 +28,6 @@ function createModElement(mod) {
   if (!mod.isValid) modEl.classList.add('invalid');
   modEl.classList.toggle('enabled', mod.isEnabled);
 
-  const selectedSet = settings.modSets.find(s => s.name === selectedModSetName);
-  if (selectedSet && selectedSet.mods.includes(mod.folderName)) {
-      modEl.classList.add('in-set');
-  }
-
   modEl.innerHTML = `
     <div class="mod-info" title="${mod.description}">
       <h3 class="mod-title">
@@ -48,7 +43,13 @@ function createModElement(mod) {
     <div class="mod-status-icon">
         <i class="fa-solid fa-circle-check"></i>
     </div>
+    <div class="mod-set-indicator"><i class="fa-solid fa-star"></i></div>
   `;
+  
+  const selectedSet = settings.modSets.find(s => s.name === selectedModSetName);
+  if (selectedSet && selectedSet.mods.includes(mod.folderName)) {
+      modEl.classList.add('in-set');
+  }
 
   modEl.addEventListener('click', async () => {
     if (modEl.classList.contains('processing')) return;
@@ -216,6 +217,9 @@ function renderModLists() {
 
 async function applyModList(modFolderNames, confirmationMessage) {
     if (!confirm(confirmationMessage)) return;
+
+    const listEl = getEl('mod-list');
+    const scrollPosition = listEl ? listEl.scrollTop : 0;
     
     isLoading = true;
     renderModLists();
@@ -226,11 +230,11 @@ async function applyModList(modFolderNames, confirmationMessage) {
     if (result.warnings) {
         alert(`The mod set was applied, but with some issues:\n- ${result.warnings.join('\n- ')}`);
     }
-    await loadMods();
+    await loadMods(scrollPosition);
     rendererEvents.emit('mods:changed');
 }
 
-async function loadMods() {
+async function loadMods(restoreScrollPos = null) {
     isLoading = true;
     renderModLists();
     renderModCounts(0, 0);
@@ -250,6 +254,13 @@ async function loadMods() {
     renderModLists();
     renderModSets();
     renderModSetActions();
+
+    if (restoreScrollPos !== null) {
+        const listEl = getEl('mod-list');
+        if (listEl) {
+            listEl.scrollTop = restoreScrollPos;
+        }
+    }
 }
 
 function setupEventListeners() {

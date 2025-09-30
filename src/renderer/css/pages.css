@@ -319,7 +319,7 @@
     display: grid;
     grid-template-columns: 1fr;
     gap: 10px;
-    padding: 5px 0;
+    padding: 5px 10px 5px 5px;
     align-content: start;
 }
 
@@ -366,10 +366,8 @@
     transform: scale(1.1);
 }
 
-.mod-card.in-set::before {
-    content: '\f005'; /* Star icon */
-    font-family: "Font Awesome 6 Free";
-    font-weight: 900;
+.mod-set-indicator {
+    display: none;
     position: absolute;
     bottom: 8px;
     left: 8px;
@@ -377,6 +375,10 @@
     opacity: 0.5;
     font-size: 0.8rem;
 }
+.mod-card.in-set .mod-set-indicator {
+    display: block;
+}
+
 
 /* MOD INFO - REWORKED */
 .mod-info {
