@@ -305,31 +305,31 @@
     background: rgba(0, 255, 127, 0.1);
 }
 
-/* Robust checkmark using a flex item pseudo-element */
-.mod-card::after {
-    content: ''; /* Empty by default */
-    font-family: "Font Awesome 6 Free";
-    font-weight: 900;
-    font-size: 1.2rem;
-    width: 30px; /* Fixed width for the icon area */
-    flex-shrink: 0; /* Prevent squashing */
-    text-align: center;
-    color: transparent; /* Hidden by default */
-    text-shadow: 0 0 8px var(--primary-glow);
-    transition: color 0.2s ease, transform 0.2s ease;
+.mod-status-icon {
+    width: 30px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-
-.mod-card.enabled::after {
-    content: '\f00c';
+.mod-status-icon i {
+    font-size: 1.5rem;
     color: var(--primary);
+    text-shadow: 0 0 8px var(--primary-glow);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    transform: scale(0.8);
+    opacity: 0;
 }
-
-.mod-card:hover.enabled::after {
+.mod-card.enabled .mod-status-icon i {
+    transform: scale(1);
+    opacity: 1;
+}
+.mod-card:hover.enabled .mod-status-icon i {
     transform: scale(1.1);
 }
 
-.mod-card.in-set::before { /* Switched from ::after to ::before to avoid conflict */
-    content: '\f005';
+.mod-card.in-set::before {
+    content: '\f005'; /* Star icon */
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
     position: absolute;

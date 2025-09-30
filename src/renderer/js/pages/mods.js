@@ -20,6 +20,7 @@ function createModElement(mod) {
       modEl.classList.add('in-set');
   }
 
+  // NOTE: Switched from pseudo-element to a real element for icon stability
   modEl.innerHTML = `
     <div class="mod-info" title="${mod.description}">
       <h3 class="mod-title">
@@ -31,6 +32,9 @@ function createModElement(mod) {
         <span class="mod-version">${mod.version}</span>
       </div>
       <p class="mod-desc">${mod.description}</p>
+    </div>
+    <div class="mod-status-icon">
+        <i class="fa-solid fa-circle-check"></i>
     </div>
   `;
 
@@ -193,7 +197,8 @@ function renderModLists() {
         const query = searchQuery.toLowerCase();
         return mod.name.toLowerCase().includes(query) ||
                mod.author.toLowerCase().includes(query) ||
-               mod.description.toLowerCase().includes(query);
+               mod.description.toLowerCase().includes(query) ||
+               mod.folderName.toLowerCase().includes(query);
     });
 
     if (filteredList.length > 0) {

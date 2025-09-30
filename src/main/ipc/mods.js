@@ -77,20 +77,23 @@ function handleGetMods() {
 function handleToggleMod() {
   ipcMain.handle('mods:toggle', async (_, { folderName, enable }) => {
     try {
-      // Ensure both directories exist before trying to move files between them.
-      if (!fs.existsSync(MODS_PATH)) {
-        await fs.promises.mkdir(MODS_PATH, { recursive: true });
-      }
-      if (!fs.existsSync(DISABLED_MODS_PATH)) {
-        await fs.promises.mkdir(DISABLED_MODS_PATH, { recursive: true });
-      }
+      if (!fs.existsSync(MODS_PATH)) await fs.promises.mkdir(MODS_PATH, { recursive: true });
+      if (!fs.existsSync(DISABLED_MODS_PATH)) await fs.promises.mkdir(DISABLED_MODS_PATH, { recursive: true });
+      
       const sourcePath = path.join(enable ? DISABLED_MODS_PATH : MODS_PATH, folderName);
       const destPath = path.join(enable ? MODS_PATH : DISABLED_MODS_PATH, folderName);
-      if (fs.existsSync(sourcePath)) {
-        await fs.promises.rename(sourcePath, destPath);
-        return { success: true };
+
+      if (!fs.existsSync(sourcePath)) {
+        return { success: false, error: `Source mod folder not found at ${sourcePath}` };
       }
-      return { success: false, error: 'Source mod folder not found.' };
+      if (fs.existsSync(destPath)) {
+        // This is an unexpected state where a mod with the same folder name exists in both directories.
+        // Prevent overwrite to avoid data loss.
+        return { success: false, error: `Destination conflict: a mod named '${folderName}' already exists.` };
+      }
+      
+      await fs.promises.rename(sourcePath, destPath);
+      return { success: true };
     } catch (e) {
       console.error('Failed to toggle mod:', e);
       return { success: false, error: e.message };
@@ -98,40 +101,56 @@ function handleToggleMod() {
   });
 }
 
+/**
+ * Safely moves a directory, checking for existence and conflicts.
+ * @param {string} source - The full path to the source directory.
+ * @param {string} dest - The full path to the destination directory.
+ * @param {string} modName - The name of the mod folder for error messages.
+ */
+async function safeMove(source, dest, modName) {
+    if (!fs.existsSync(source)) {
+        throw new Error(`Mod to move '${modName}' was not found in the source directory.`);
+    }
+    if (fs.existsSync(dest)) {
+        throw new Error(`Cannot move mod '${modName}', a folder with the same name already exists in the destination.`);
+    }
+    await fs.promises.rename(source, dest);
+}
+
 function handleApplyModSet() {
     ipcMain.handle('mods:apply-mod-set', async (_, { modSetFolderNames }) => {
         try {
-            if (!fs.existsSync(DISABLED_MODS_PATH)) {
-                await fs.promises.mkdir(DISABLED_MODS_PATH, { recursive: true });
-            }
-            if (!fs.existsSync(MODS_PATH)) {
-                await fs.promises.mkdir(MODS_PATH, { recursive: true });
-            }
+            if (!fs.existsSync(DISABLED_MODS_PATH)) await fs.promises.mkdir(DISABLED_MODS_PATH, { recursive: true });
+            if (!fs.existsSync(MODS_PATH)) await fs.promises.mkdir(MODS_PATH, { recursive: true });
             
             const set = new Set(modSetFolderNames);
-            const enabledDirs = fs.existsSync(MODS_PATH) ? fs.readdirSync(MODS_PATH, { withFileTypes: true }).filter(d => d.isDirectory()) : [];
-            const disabledDirs = fs.existsSync(DISABLED_MODS_PATH) ? fs.readdirSync(DISABLED_MODS_PATH, { withFileTypes: true }).filter(d => d.isDirectory()) : [];
+            const enabledDirs = fs.readdirSync(MODS_PATH, { withFileTypes: true }).filter(d => d.isDirectory());
+            const disabledDirs = fs.readdirSync(DISABLED_MODS_PATH, { withFileTypes: true }).filter(d => d.isDirectory());
             
-            const promises = [];
-
+            // Using sequential operations for safety. If one fails, the loop stops immediately.
+            
             // Disable mods that are currently enabled but shouldn't be
             for (const mod of enabledDirs) {
                 if (!set.has(mod.name)) {
-                    promises.push(fs.promises.rename(path.join(MODS_PATH, mod.name), path.join(DISABLED_MODS_PATH, mod.name)));
+                    const sourcePath = path.join(MODS_PATH, mod.name);
+                    const destPath = path.join(DISABLED_MODS_PATH, mod.name);
+                    await safeMove(sourcePath, destPath, mod.name);
                 }
             }
 
             // Enable mods that are currently disabled but should be
             for (const mod of disabledDirs) {
                 if (set.has(mod.name)) {
-                    promises.push(fs.promises.rename(path.join(DISABLED_MODS_PATH, mod.name), path.join(MODS_PATH, mod.name)));
+                    const sourcePath = path.join(DISABLED_MODS_PATH, mod.name);
+                    const destPath = path.join(MODS_PATH, mod.name);
+                    await safeMove(sourcePath, destPath, mod.name);
                 }
             }
             
-            await Promise.all(promises);
             return { success: true };
         } catch (e) {
             console.error('Failed to apply mod set:', e);
+            // The error message from safeMove is designed to be user-friendly.
             return { success: false, error: e.message };
         }
     });
