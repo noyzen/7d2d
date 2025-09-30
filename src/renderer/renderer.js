@@ -78,7 +78,7 @@ navButtons.forEach(button => {
     
     if (pageId === 'page-mods') {
       loadMods();
-    } else if (pageId === 'page-settings') {
+    } else if (pageId === 'page-developer') {
       renderConfigEditorRules();
       renderRegistryRules();
     }
@@ -273,8 +273,12 @@ function createConfigRuleElement(rule) {
                 <input type="number" id="line-num-${rule.id}" value="${rule.lineNumber || ''}" min="1" placeholder="e.g., 5">
             </div>
             <div class="config-field">
-                <label for="line-template-${rule.id}">Line Template (use ##7d2dlauncher-username##)</label>
-                <input type="text" id="line-template-${rule.id}" value="${rule.lineTemplate || ''}" placeholder="e.g., PlayerName = ##7d2dlauncher-username##">
+                <label for="line-match-${rule.id}">Line Content Match (optional)</label>
+                <input type="text" id="line-match-${rule.id}" value="${rule.lineMatch || ''}" placeholder="Text that must exist on the line for it to be replaced, e.g., UserName=">
+            </div>
+            <div class="config-field">
+                <label for="line-template-${rule.id}">New Line Content (use ##7d2dlauncher-username##)</label>
+                <input type="text" id="line-template-${rule.id}" value="${rule.lineTemplate || ''}" placeholder="e.g., UserName=##7d2dlauncher-username##">
             </div>
         </div>
     `;
@@ -282,6 +286,7 @@ function createConfigRuleElement(rule) {
     // Event Listeners
     const filePathInput = ruleEl.querySelector(`#file-path-${rule.id}`);
     const lineNumInput = ruleEl.querySelector(`#line-num-${rule.id}`);
+    const lineMatchInput = ruleEl.querySelector(`#line-match-${rule.id}`);
     const lineTemplateInput = ruleEl.querySelector(`#line-template-${rule.id}`);
     const browseBtn = ruleEl.querySelector('.browse-btn');
     const removeBtn = ruleEl.querySelector('.remove-rule-btn');
@@ -294,6 +299,7 @@ function createConfigRuleElement(rule) {
                 ...settings.configEditorRules[ruleIndex],
                 filePath: filePathInput.value,
                 lineNumber: isNaN(lineNum) ? null : lineNum,
+                lineMatch: lineMatchInput.value,
                 lineTemplate: lineTemplateInput.value,
             };
             saveSettings();
@@ -309,6 +315,7 @@ function createConfigRuleElement(rule) {
     });
 
     lineNumInput.addEventListener('change', updateRule);
+    lineMatchInput.addEventListener('change', updateRule);
     lineTemplateInput.addEventListener('change', updateRule);
 
     removeBtn.addEventListener('click', () => {
@@ -338,6 +345,7 @@ addConfigRuleBtn.addEventListener('click', () => {
         filePath: '',
         lineNumber: null,
         lineTemplate: '',
+        lineMatch: '',
     };
     if (!settings.configEditorRules) {
       settings.configEditorRules = [];
@@ -458,6 +466,25 @@ async function init() {
   
   if (data.settings) {
     settings = { ...settings, ...data.settings };
+  }
+
+  // Add default rules if settings for them are empty/undefined
+  if (!settings.configEditorRules || settings.configEditorRules.length === 0) {
+    settings.configEditorRules = [{
+      id: Date.now(),
+      filePath: 'C:\\Users\\Noyzen\\Desktop\\7 Days To Die\\7DaysToDie_Data\\Plugins\\x86_64\\steam_emu.ini',
+      lineNumber: 29,
+      lineTemplate: 'UserName=##7d2dlauncher-username##',
+      lineMatch: 'UserName=' 
+    }];
+  }
+  if (window.appInfo.platform === 'win32' && (!settings.registryEditorRules || settings.registryEditorRules.length === 0)) {
+    settings.registryEditorRules = [{
+      id: Date.now() + 1, // ensure unique id
+      regPath: 'HKEY_CURRENT_USER\\SOFTWARE\\The Fun Pimps\\7 Days To Die',
+      keyName: 'PlayerName_h775476977',
+      keyValueTemplate: '##7d2dlauncher-username##'
+    }];
   }
 
   applySettings();

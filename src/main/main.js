@@ -183,6 +183,16 @@ ipcMain.handle('launcher:start-game', async (_, settings) => {
           throw new Error(`Line number ${rule.lineNumber} is out of bounds for file ${rule.filePath}`);
         }
 
+        // --- NEW VALIDATION ---
+        if (rule.lineMatch && typeof rule.lineMatch === 'string' && rule.lineMatch.trim() !== '') {
+          const currentLine = lines[lineIndex];
+          if (!currentLine.includes(rule.lineMatch)) {
+            // Use path.basename to keep file path private and cleaner in the error message
+            throw new Error(`Validation failed for ${path.basename(rule.filePath)}: Line ${rule.lineNumber} does not contain the expected text "${rule.lineMatch}". Edit was not applied.`);
+          }
+        }
+        // --- END NEW VALIDATION ---
+
         const newContent = rule.lineTemplate.replace(/##7d2dlauncher-username##/g, playerName);
         lines[lineIndex] = newContent;
 

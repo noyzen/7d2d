@@ -137,6 +137,7 @@ p { color: var(--fg-med); line-height: 1.6; }
 /* --- PAGE STYLES --- */
 .page-header { border-bottom: 1px solid var(--border-glass); padding-bottom: 15px; }
 .page-header h1 { margin: 0; color: var(--primary); text-shadow: 0 0 8px var(--primary-glow); }
+.page-header h2 { margin: 0; font-size: 1.5rem; }
 .page-header p { margin: 5px 0 0; }
 
 /* Home Page */
@@ -261,7 +262,12 @@ p { color: var(--fg-med); line-height: 1.6; }
 .setting-label h3 { margin: 0 0 5px 0; }
 .setting-label p { margin: 0; font-size: 0.9rem; }
 
-/* Config & Registry Editors */
+/* Config & Registry Editors (Developer Page) */
+.page-section-divider {
+  margin-top: 30px; 
+  border-top: 1px solid var(--border-glass); 
+  padding-top: 30px;
+}
 .config-editor-container,
 .registry-editor-container {
     display: flex;

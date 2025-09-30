@@ -39,6 +39,10 @@
           <i class="fa-solid fa-gear"></i>
           <span>Settings</span>
         </button>
+        <button class="nav-button" data-page="page-developer" aria-label="Developer">
+          <i class="fa-solid fa-file-code"></i>
+          <span>Developer</span>
+        </button>
       </nav>
     </aside>
 
@@ -111,8 +115,17 @@
             </div>
           </div>
         </div>
-        <div class="page-header" style="margin-top: 30px; border-top: 1px solid var(--border-glass); padding-top: 30px;">
-            <h1>Player Name Config Editor</h1>
+      </div>
+
+      <!-- Developer Page -->
+      <div class="page" id="page-developer">
+        <div class="page-header">
+          <h1>Developer Tools</h1>
+          <p>Advanced tools for configuring game files and registry entries.</p>
+        </div>
+        
+        <div class="page-header" style="margin-top: 10px; border-top: none; padding-bottom: 5px;">
+            <h2>Player Name Config Editor</h2>
             <p>Define files and lines to update with your player name when the game starts.</p>
         </div>
         <div class="config-editor-container">
@@ -125,9 +138,9 @@
             </button>
         </div>
 
-        <div id="registry-editor-wrapper">
-          <div class="page-header" style="margin-top: 30px; border-top: 1px solid var(--border-glass); padding-top: 30px;">
-              <h1>Registry Key Editor</h1>
+        <div id="registry-editor-wrapper" class="page-section-divider">
+          <div class="page-header" style="border-top: none; padding-top: 0; padding-bottom: 5px;">
+              <h2>Registry Key Editor</h2>
               <p>Define registry keys to update with your player name. (Windows Only)</p>
           </div>
           <div class="registry-editor-container">
@@ -140,7 +153,6 @@
               </button>
           </div>
         </div>
-
       </div>
     </main>
   </div>
