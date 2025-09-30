@@ -28,27 +28,24 @@ const CHAT_HISTORY_PATH = path.join(LAUNCHER_FILES_PATH, 'chathistory.json');
 
 function getLocalIp() {
     const networkInterfaces = os.networkInterfaces();
-    // First pass for prioritized private ranges
+    // Iterate through all network interfaces to find a suitable private IPv4 address.
     for (const interfaceName in networkInterfaces) {
         const networkInterface = networkInterfaces[interfaceName];
         for (const interfaceInfo of networkInterface) {
+            // We are looking for a non-internal IPv4 address within private ranges.
             if (interfaceInfo.family === 'IPv4' && !interfaceInfo.internal) {
-                if (interfaceInfo.address.startsWith('192.168.') || interfaceInfo.address.startsWith('10.') || /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(interfaceInfo.address)) {
+                // Check for standard private IP ranges (192.168.x.x, 10.x.x, 172.16.x.x-172.31.x.x)
+                if (interfaceInfo.address.startsWith('192.168.') || 
+                    interfaceInfo.address.startsWith('10.') || 
+                    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(interfaceInfo.address)) {
+                    // Found a suitable local LAN IP. Return it.
                     return interfaceInfo.address;
                 }
             }
         }
     }
-    // Second pass as a fallback for any non-internal IPv4
-    for (const interfaceName in networkInterfaces) {
-        const networkInterface = networkInterfaces[interfaceName];
-        for (const interfaceInfo of networkInterface) {
-            if (interfaceInfo.family === 'IPv4' && !interfaceInfo.internal) {
-                return interfaceInfo.address;
-            }
-        }
-    }
-    return null; // No suitable IP found
+    // If no suitable private IP was found after checking all interfaces, return null.
+    return null;
 }
 
 function loadChatHistory() {
