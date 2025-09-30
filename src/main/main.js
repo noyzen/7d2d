@@ -1,6 +1,7 @@
 const { app, BrowserWindow, Menu, nativeTheme, ipcMain, globalShortcut, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { spawn } = require('child_process');
 const WindowState = require('electron-window-state');
 const { XMLParser } = require('fast-xml-parser');
@@ -35,6 +36,7 @@ const BROADCAST_ADDR = '255.255.255.255';
 const BROADCAST_INTERVAL = 5000; // 5 seconds
 const PEER_TIMEOUT = 12000; // 12 seconds
 const INSTANCE_ID = crypto.randomUUID();
+const OS_USERNAME = os.userInfo().username;
 
 let lanSocket = null;
 let broadcastInterval = null;
@@ -103,9 +105,19 @@ app.on('ready', () => {
 });
 
 app.on('will-quit', () => {
+  // Stop discovery before quitting
+  if (broadcastInterval) clearInterval(broadcastInterval);
+  if (peerCheckInterval) clearInterval(peerCheckInterval);
+  if (lanSocket) {
+    // Send a 'disconnect' message so others know we're leaving immediately
+    broadcastPacket('disconnect');
+    lanSocket.close();
+    lanSocket = null;
+  }
   // Unregister all shortcuts.
   globalShortcut.unregisterAll();
 });
+
 
 app.on('window-all-closed', () => app.quit());
 app.on('activate', () => {
@@ -123,12 +135,14 @@ ipcMain.handle('window:close', () => mainWindow?.close());
 ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
 
 // --- LAN Chat Logic ---
-function updatePeer(id, name, address) {
+function updatePeer(id, name, osUsername, address) {
   const now = Date.now();
-  if (!peers.has(id)) {
-    console.log(`New peer discovered: ${name} [${id}] at ${address}`);
+  const isNew = !peers.has(id);
+  if (isNew) {
+    console.log(`New peer discovered: ${name} (${osUsername}) [${id}] at ${address}`);
   }
-  peers.set(id, { name, lastSeen: now, status: 'online' });
+  peers.set(id, { name, osUsername, lastSeen: now, status: 'online' });
+  return isNew;
 }
 
 function checkPeers() {
@@ -159,6 +173,7 @@ function broadcastPacket(type, payload) {
     type,
     id: INSTANCE_ID,
     name: currentUsername,
+    osUsername: OS_USERNAME,
     ...payload
   }));
   lanSocket.send(message, 0, message.length, LAN_PORT, BROADCAST_ADDR, (err) => {
@@ -187,17 +202,30 @@ ipcMain.handle('lan:start-discovery', () => {
 
       switch (data.type) {
         case 'heartbeat':
-          updatePeer(data.id, data.name, rinfo.address);
+          const isNewPeer = updatePeer(data.id, data.name, data.osUsername, rinfo.address);
           sendPeerUpdate();
+          // If we just discovered someone new, announce our presence immediately
+          // to ensure bi-directional discovery.
+          if (isNewPeer) {
+            broadcastPacket('heartbeat');
+          }
           break;
         case 'message':
           if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('lan:message-received', {
               id: data.id,
               name: data.name,
+              osUsername: data.osUsername,
               text: data.text,
               timestamp: Date.now()
             });
+          }
+          break;
+        case 'disconnect':
+          if (peers.has(data.id)) {
+            peers.get(data.id).status = 'offline';
+            console.log(`Peer disconnected gracefully: ${data.name} [${data.id}]`);
+            sendPeerUpdate();
           }
           break;
       }
@@ -223,6 +251,7 @@ ipcMain.handle('lan:stop-discovery', () => {
   if (broadcastInterval) clearInterval(broadcastInterval);
   if (peerCheckInterval) clearInterval(peerCheckInterval);
   if (lanSocket) {
+    broadcastPacket('disconnect');
     lanSocket.close();
     lanSocket = null;
   }
@@ -235,7 +264,7 @@ ipcMain.handle('lan:stop-discovery', () => {
 ipcMain.handle('lan:set-username', (_, username) => {
   currentUsername = username;
   // Update our own entry for immediate reflection
-  updatePeer(INSTANCE_ID, currentUsername, '127.0.0.1');
+  updatePeer(INSTANCE_ID, currentUsername, OS_USERNAME, '127.0.0.1');
   sendPeerUpdate();
   broadcastPacket('heartbeat'); // Broadcast name change immediately
 });
@@ -248,6 +277,7 @@ ipcMain.handle('lan:send-message', (_, messageText) => {
         mainWindow.webContents.send('lan:message-received', {
             id: INSTANCE_ID,
             name: currentUsername,
+            osUsername: OS_USERNAME,
             text: messageText.trim(),
             timestamp: Date.now()
         });
@@ -275,6 +305,19 @@ ipcMain.handle('launcher:get-initial-data', () => {
       settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
       currentUsername = settings.playerName || 'Survivor';
     }
+    // Add default about page settings if they don't exist
+    if (!settings.aboutPage) {
+      settings.aboutPage = {
+        title: 'About This Launcher',
+        creator: 'Your Name Here',
+        version: app.getVersion(),
+        website: 'https://example.com',
+        description: 'This is a custom launcher for 7 Days to Die, designed to provide a better user experience for managing mods, settings, and launching the game. Thank you for using it!'
+      };
+    } else {
+      // Ensure version is always up-to-date
+      settings.aboutPage.version = app.getVersion();
+    }
   } catch (e) {
     console.error("Failed to load settings:", e);
   }
@@ -295,7 +338,7 @@ ipcMain.handle('launcher:save-settings', async (_, settings) => {
     if (settings.playerName && settings.playerName !== currentUsername) {
       currentUsername = settings.playerName;
       // Update our own entry for immediate reflection
-      updatePeer(INSTANCE_ID, currentUsername, '127.0.0.1');
+      updatePeer(INSTANCE_ID, currentUsername, OS_USERNAME, '127.0.0.1');
       sendPeerUpdate();
       broadcastPacket('heartbeat'); // Broadcast name change immediately
     }

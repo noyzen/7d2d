@@ -5,9 +5,19 @@ let settings = {
   playerName: 'Survivor',
   configEditorRules: [],
   registryEditorRules: [],
+  aboutPage: {
+    title: 'About This Launcher',
+    creator: 'Your Name Here',
+    version: '1.0.0',
+    website: 'https://example.com',
+    description: 'This is a custom launcher for 7 Days to Die, designed to provide a better user experience for managing mods, settings, and launching the game. Thank you for using it!'
+  }
 };
 let lanChatStarted = false;
 let selfId = null;
+let unreadMessageCount = 0;
+let logoClickCount = 0;
+let logoClickTimer = null;
 
 // --- DOM ELEMENTS ---
 // Window Controls
@@ -22,8 +32,10 @@ const errorOverlay = document.getElementById('error-overlay');
 const errorMessage = document.getElementById('error-message');
 
 // Navigation
+const sidebarLogo = document.getElementById('sidebar-logo');
 const navButtons = document.querySelectorAll('.nav-button');
 const pages = document.querySelectorAll('.page');
+const developerNavBtn = document.getElementById('developer-nav-btn');
 
 // Home Page
 const startGameBtn = document.getElementById('start-game-btn');
@@ -32,6 +44,12 @@ const playerNameWrapper = document.getElementById('player-name-wrapper');
 const playerNameDisplay = document.getElementById('player-name-display');
 const playerNameInput = document.getElementById('player-name-input');
 const editPlayerNameBtn = document.getElementById('edit-player-name-btn');
+const homeLanStatus = document.getElementById('home-lan-status');
+const lanPlayerCount = document.getElementById('lan-player-count');
+const homePlayerList = document.getElementById('home-player-list');
+const goToChatBtn = document.getElementById('go-to-chat-btn');
+const activeModsCount = document.getElementById('active-mods-count');
+
 
 // Mods Page
 const enabledModsList = document.getElementById('enabled-mods-list');
@@ -40,11 +58,18 @@ const disabledModsList = document.getElementById('disabled-mods-list');
 // Settings Page
 const musicToggle = document.getElementById('setting-music-toggle');
 const exitOnLaunchToggle = document.getElementById('setting-exit-toggle');
+
+// Developer Page
 const configRulesList = document.getElementById('config-rules-list');
 const addConfigRuleBtn = document.getElementById('add-config-rule-btn');
 const registryEditorWrapper = document.getElementById('registry-editor-wrapper');
 const registryRulesList = document.getElementById('registry-rules-list');
 const addRegistryRuleBtn = document.getElementById('add-registry-rule-btn');
+const aboutEditorTitle = document.getElementById('about-editor-title');
+const aboutEditorCreator = document.getElementById('about-editor-creator');
+const aboutEditorWebsite = document.getElementById('about-editor-website');
+const aboutEditorDescription = document.getElementById('about-editor-description');
+
 
 // Chat Page
 const chatPage = document.getElementById('page-chat');
@@ -53,6 +78,14 @@ const chatMessages = document.getElementById('chat-messages');
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
 const chatSendBtn = document.getElementById('chat-send-btn');
+const chatNotificationBadge = document.getElementById('chat-notification-badge');
+
+// About Page
+const aboutTitle = document.getElementById('about-title');
+const aboutDescription = document.getElementById('about-description');
+const aboutCreator = document.getElementById('about-creator');
+const aboutVersion = document.getElementById('about-version');
+const aboutWebsite = document.getElementById('about-website');
 
 
 // --- WINDOW CONTROLS ---
@@ -78,6 +111,21 @@ window.windowControls.onMaximizeChanged(refreshMaxButton);
 
 // --- LAUNCHER LOGIC ---
 
+// Developer Mode Unlock
+sidebarLogo.addEventListener('click', () => {
+    logoClickCount++;
+    clearTimeout(logoClickTimer);
+    logoClickTimer = setTimeout(() => {
+        logoClickCount = 0; // Reset after 2 seconds of inactivity
+    }, 2000);
+
+    if (logoClickCount === 7) {
+        developerNavBtn.style.display = 'flex';
+        logoClickCount = 0;
+        clearTimeout(logoClickTimer);
+    }
+});
+
 // Navigation
 navButtons.forEach(button => {
   button.addEventListener('click', () => {
@@ -91,10 +139,13 @@ navButtons.forEach(button => {
     } else if (pageId === 'page-developer') {
       renderConfigEditorRules();
       renderRegistryRules();
-    } else if (pageId === 'page-chat' && !lanChatStarted) {
-      window.lan.startDiscovery();
-      window.lan.setUsername(settings.playerName || 'Survivor');
-      lanChatStarted = true;
+      renderAboutPageEditor();
+    } else if (pageId === 'page-chat') {
+      // Clear notifications when entering chat
+      unreadMessageCount = 0;
+      updateUnreadBadge();
+      // Scroll to the latest message
+      chatMessages.scrollTop = chatMessages.scrollHeight;
     }
   });
 });
@@ -145,14 +196,13 @@ exitOnLaunchToggle.addEventListener('change', () => {
 // Player Name Editing
 function saveAndExitEditMode() {
     // Trim and use a fallback name if empty
-    const newName = playerNameInput.value.trim();
-    if (newName) {
-        settings.playerName = newName;
-    } else {
-        settings.playerName = 'Survivor'; // Fallback
-    }
+    const newName = playerNameInput.value.trim() || 'Survivor';
 
-    saveSettings();
+    if (newName !== settings.playerName) {
+        settings.playerName = newName;
+    }
+    
+    saveSettings(); // This saves to file and informs the main process which will broadcast the name change.
 
     // Update UI elements with potentially corrected name
     playerNameDisplay.textContent = settings.playerName;
@@ -185,6 +235,16 @@ playerNameInput.addEventListener('keydown', (e) => {
 
 
 // Home Page
+async function updateHomePageStats() {
+    try {
+        const { enabled } = await window.launcher.getMods();
+        activeModsCount.textContent = enabled.length;
+    } catch (e) {
+        console.error("Failed to update home page stats:", e);
+        activeModsCount.textContent = 'N/A';
+    }
+}
+
 startGameBtn.addEventListener('click', async () => {
   startGameBtn.disabled = true;
   startGameBtn.querySelector('span').textContent = 'LAUNCHING...';
@@ -216,6 +276,11 @@ window.launcher.onGameClosed(() => {
   startGameBtn.querySelector('span').textContent = 'START GAME';
 });
 
+goToChatBtn.addEventListener('click', () => {
+  // Find the chat button and click it to navigate
+  document.querySelector('.nav-button[data-page="page-chat"]').click();
+});
+
 
 // Mods Page
 function createModElement(mod, isEnabled) {
@@ -237,6 +302,7 @@ function createModElement(mod, isEnabled) {
   modEl.querySelector('input[type="checkbox"]').addEventListener('change', async (e) => {
     await window.launcher.toggleMod({ folderName: mod.folderName, enable: e.target.checked });
     loadMods();
+    updateHomePageStats();
   });
   return modEl;
 }
@@ -263,7 +329,50 @@ async function loadMods() {
     }
 }
 
+// About Page
+function renderAboutPage() {
+    const aboutData = settings.aboutPage;
+    aboutTitle.textContent = aboutData.title;
+    aboutDescription.textContent = aboutData.description;
+    aboutCreator.textContent = aboutData.creator;
+    aboutVersion.textContent = aboutData.version;
+    aboutWebsite.textContent = aboutData.website;
+    aboutWebsite.href = aboutData.website;
+}
+
 // --- LAN CHAT ---
+function updateUnreadBadge() {
+  if (unreadMessageCount > 0) {
+    chatNotificationBadge.textContent = unreadMessageCount > 9 ? '9+' : unreadMessageCount;
+    chatNotificationBadge.style.display = 'block';
+  } else {
+    chatNotificationBadge.style.display = 'none';
+  }
+}
+
+function renderHomePageLanStatus(peers) {
+  const onlinePeers = peers.filter(p => p.status === 'online');
+  // Show if there are other players besides self
+  if (onlinePeers.length > 1) { 
+    homeLanStatus.classList.remove('hidden');
+    lanPlayerCount.textContent = onlinePeers.length;
+    homePlayerList.innerHTML = '';
+    onlinePeers
+      .sort((a,b) => a.name.localeCompare(b.name))
+      .forEach(peer => {
+        const peerEl = document.createElement('span');
+        peerEl.className = 'home-player-name';
+        peerEl.textContent = peer.name;
+        if (peer.id === selfId) {
+          peerEl.classList.add('is-self');
+          peerEl.textContent += ' (You)';
+        }
+        homePlayerList.appendChild(peerEl);
+    });
+  } else {
+    homeLanStatus.classList.add('hidden');
+  }
+}
 
 function renderPlayerList(peers) {
   playerList.innerHTML = '';
@@ -290,7 +399,10 @@ function renderPlayerList(peers) {
     }
     playerEl.innerHTML = `
       <div class="status-dot ${peer.status}"></div>
-      <span class="player-name" title="${peer.name}">${peer.name} ${peer.id === selfId ? '(You)' : ''}</span>
+      <div class="player-name-container">
+        <span class="player-name" title="${peer.name}">${peer.name} ${peer.id === selfId ? '(You)' : ''}</span>
+        <span class="player-os-name">${peer.osUsername || ''}</span>
+      </div>
     `;
     playerList.appendChild(playerEl);
   });
@@ -306,12 +418,15 @@ function appendChatMessage(message) {
 
   const timestamp = new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+  // Sanitize text content before inserting
+  const sanitizedText = message.text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
   messageEl.innerHTML = `
     <div class="message-header">
-      <span class="message-sender">${message.name}</span>
+      <span class="message-sender">${message.name} <span class="message-os-sender">(${message.osUsername || '...'})</span></span>
       <span class="message-timestamp">${timestamp}</span>
     </div>
-    <div class="message-bubble">${message.text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+    <div class="message-bubble">${sanitizedText}</div>
   `;
 
   const shouldScroll = chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 10;
@@ -335,10 +450,16 @@ chatForm.addEventListener('submit', (e) => {
 window.lan.onPeerUpdate((data) => {
   selfId = data.selfId;
   renderPlayerList(data.list);
+  renderHomePageLanStatus(data.list);
 });
 
 window.lan.onMessageReceived((message) => {
   appendChatMessage(message);
+  // Don't count self messages as unread and only increment if not on chat page
+  if (message.id !== selfId && !chatPage.classList.contains('active')) {
+    unreadMessageCount++;
+    updateUnreadBadge();
+  }
 });
 
 
@@ -538,6 +659,31 @@ addRegistryRuleBtn.addEventListener('click', () => {
     updatePlayerNameVisibility();
 });
 
+
+// About Page Editor
+function renderAboutPageEditor() {
+    const aboutData = settings.aboutPage;
+    aboutEditorTitle.value = aboutData.title;
+    aboutEditorCreator.value = aboutData.creator;
+    aboutEditorWebsite.value = aboutData.website;
+    aboutEditorDescription.value = aboutData.description;
+}
+
+function handleAboutEditorChange() {
+    settings.aboutPage.title = aboutEditorTitle.value;
+    settings.aboutPage.creator = aboutEditorCreator.value;
+    settings.aboutPage.website = aboutEditorWebsite.value;
+    settings.aboutPage.description = aboutEditorDescription.value;
+    saveSettings();
+    renderAboutPage(); // Update the "About" page live
+}
+
+aboutEditorTitle.addEventListener('input', handleAboutEditorChange);
+aboutEditorCreator.addEventListener('input', handleAboutEditorChange);
+aboutEditorWebsite.addEventListener('input', handleAboutEditorChange);
+aboutEditorDescription.addEventListener('input', handleAboutEditorChange);
+
+
 // --- INITIALIZATION ---
 async function init() {
   refreshMaxButton();
@@ -581,7 +727,16 @@ async function init() {
   }
 
   applySettings();
+  renderAboutPage();
   updatePlayerNameVisibility();
+  updateHomePageStats();
+  
+  // Start LAN discovery at launch for immediate feedback
+  if (!lanChatStarted) {
+      window.lan.startDiscovery();
+      window.lan.setUsername(settings.playerName || 'Survivor');
+      lanChatStarted = true;
+  }
 }
 
 init();
