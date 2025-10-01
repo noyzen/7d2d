@@ -79,10 +79,12 @@ function renderModCounts(enabledCount, disabledCount) {
     if (!countsEl) return;
     countsEl.innerHTML = `
         <div class="mod-count-item enabled" title="Enabled Mods">
-            <i class="fa-solid fa-circle-check"></i> <span class="count">${enabledCount}</span>
+            <span class="count">${enabledCount}</span>
+            <span>Enabled</span>
         </div>
         <div class="mod-count-item disabled" title="Disabled Mods">
-            <i class="fa-solid fa-power-off"></i> <span class="count">${disabledCount}</span>
+            <span class="count">${disabledCount}</span>
+            <span>Disabled</span>
         </div>
     `;
 }
@@ -177,24 +179,9 @@ function renderModSets() {
     
     listEl.innerHTML = '';
 
-    const manualCard = document.createElement('div');
-    manualCard.className = 'mod-set-card';
-    manualCard.dataset.setName = 'manual';
-    if (selectedModSetName === null) manualCard.classList.add('active');
-    manualCard.innerHTML = `
-        <div class="mod-set-info">
-            <span class="mod-set-name">Manual Configuration</span>
-            <span class="mod-set-count">Directly enable/disable mods</span>
-        </div>`;
-    manualCard.addEventListener('click', () => {
-        selectedModSetName = null;
-        settings.activeModSet = null;
-        saveSettings();
-        renderModSets();
-        renderModSetActions();
-        renderModLists();
-    });
-    listEl.appendChild(manualCard);
+    if (!settings.modSets || settings.modSets.length === 0) {
+        listEl.innerHTML = '<p class="no-mods" style="text-align: center; padding: 20px 0;">No mod sets created yet. Click "Save New Set" to create one from your currently enabled mods.</p>';
+    }
 
     (settings.modSets || []).forEach(set => {
         const setCard = document.createElement('div');
@@ -212,8 +199,18 @@ function renderModSets() {
         
         setCard.addEventListener('click', (e) => {
             if (e.target.closest('.delete-set-btn')) return;
-            selectedModSetName = set.name;
-            settings.activeModSet = set.name;
+
+            // Toggle selection logic
+            if (selectedModSetName === set.name) {
+                // If clicking the active set, deselect it
+                selectedModSetName = null;
+                settings.activeModSet = null;
+            } else {
+                // Otherwise, select the new set
+                selectedModSetName = set.name;
+                settings.activeModSet = set.name;
+            }
+            
             saveSettings();
             renderModSets();
             renderModSetActions();
@@ -236,6 +233,7 @@ function renderModSets() {
             saveSettings();
             renderModSets();
             renderModSetActions();
+            renderModLists();
         });
 
         listEl.appendChild(setCard);
@@ -275,16 +273,42 @@ function renderModSetActions() {
             'Disable all mods?'
         ));
     } else {
-        actionsEl.innerHTML = `<button id="apply-mod-set-btn" class="mod-set-action-btn apply"><i class="fa-solid fa-check"></i> Apply Set</button>`;
+        actionsEl.innerHTML = `
+            <button id="apply-mod-set-btn" class="mod-set-action-btn apply"><i class="fa-solid fa-check"></i> Apply Set</button>
+            <div class="sub-section-divider"></div>
+            <button id="set-enable-all-btn" class="mod-set-action-btn enable-all" title="Add all available mods to this set"><i class="fa-solid fa-folder-plus"></i> Add All to Set</button>
+            <button id="set-disable-all-btn" class="mod-set-action-btn disable-all" title="Remove all mods from this set"><i class="fa-solid fa-folder-minus"></i> Remove All from Set</button>
+        `;
         const applyBtn = getEl('apply-mod-set-btn');
         if (isSetApplied()) {
             applyBtn.disabled = true;
-            applyBtn.innerHTML = `<i class="fa-solid fa-check"></i> Set is Active`;
+            applyBtn.innerHTML = `<i class="fa-solid fa-check-double"></i> Set is Active`;
         }
         applyBtn.addEventListener('click', () => {
             const modSet = settings.modSets.find(s => s.name === selectedModSetName);
             if (!modSet) return;
             applyModList(modSet.mods, `Apply the mod set "${selectedModSetName}"?`);
+        });
+
+        getEl('set-enable-all-btn').addEventListener('click', () => {
+            const selectedSet = settings.modSets.find(s => s.name === selectedModSetName);
+            if (selectedSet) {
+                selectedSet.mods = allMods.map(m => m.folderName);
+                saveSettings();
+                renderModLists();
+                renderModSets();
+                renderModSetActions();
+            }
+        });
+        getEl('set-disable-all-btn').addEventListener('click', () => {
+           const selectedSet = settings.modSets.find(s => s.name === selectedModSetName);
+           if (selectedSet) {
+               selectedSet.mods = [];
+               saveSettings();
+               renderModLists();
+               renderModSets();
+               renderModSetActions();
+           }
         });
     }
 }
@@ -383,7 +407,10 @@ async function loadMods(restoreScrollPos = null) {
 }
 
 function setupEventListeners() {
-    getEl('mod-search-input').addEventListener('input', (e) => {
+    const searchInput = getEl('mod-search-input');
+    // On page load/re-init, ensure the input's value matches our state.
+    searchInput.value = searchQuery;
+    searchInput.addEventListener('input', (e) => {
         searchQuery = e.target.value;
         renderModLists();
     });
@@ -423,6 +450,7 @@ function setupEventListeners() {
         
         renderModSets();
         renderModSetActions();
+        renderModLists();
     });
 }
 
@@ -430,4 +458,10 @@ export function init() {
     setupEventListeners();
     setupContextMenu();
     loadMods();
+}
+
+export function unmount() {
+    // Clear search query when navigating away from the page
+    // to prevent the filter from being applied on next visit.
+    searchQuery = '';
 }
