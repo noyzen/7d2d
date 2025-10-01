@@ -5,7 +5,7 @@ import { showPrompt, showConfirmationPrompt, showAlert } from '../ui.js';
 let allMods = [];
 let searchQuery = '';
 let isLoading = false;
-let selectedModSetName = null; // null means "Manual Configuration"
+let selectedModSetName = settings.activeModSet; // Initialize with saved setting
 
 function getEl(id) { return document.getElementById(id); }
 
@@ -102,6 +102,8 @@ function renderModSets() {
         </div>`;
     manualCard.addEventListener('click', () => {
         selectedModSetName = null;
+        settings.activeModSet = null;
+        saveSettings();
         renderModSets();
         renderModSetActions();
         renderModLists();
@@ -125,6 +127,8 @@ function renderModSets() {
         setCard.addEventListener('click', (e) => {
             if (e.target.closest('.delete-set-btn')) return;
             selectedModSetName = set.name;
+            settings.activeModSet = set.name;
+            saveSettings();
             renderModSets();
             renderModSetActions();
             renderModLists();
@@ -139,10 +143,11 @@ function renderModSets() {
             );
             if (!confirmed) return;
             settings.modSets = settings.modSets.filter(s => s.name !== set.name);
-            saveSettings();
             if (selectedModSetName === set.name) {
                 selectedModSetName = null;
+                settings.activeModSet = null;
             }
+            saveSettings();
             renderModSets();
             renderModSetActions();
         });
@@ -325,9 +330,11 @@ function setupEventListeners() {
         };
         settings.modSets.push(newSet);
         settings.modSets.sort((a, b) => a.name.localeCompare(b.name));
-        saveSettings();
         
         selectedModSetName = newSet.name;
+        settings.activeModSet = newSet.name;
+        saveSettings();
+        
         renderModSets();
         renderModSetActions();
     });

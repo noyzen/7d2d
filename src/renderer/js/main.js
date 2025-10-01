@@ -1,4 +1,4 @@
-import { settings, applyInitialSettings, initDefaultSettings } from './state.js';
+import { settings, applyInitialSettings, initDefaultSettings, saveSettings } from './state.js';
 import { rendererEvents } from './events.js';
 import { incrementUnreadMessages } from './notifications.js';
 import { formatBytes } from './ui.js';
@@ -191,6 +191,22 @@ async function init() {
   
   applyInitialSettings(data.settings);
   initDefaultSettings(); // Ensure defaults are set for new features
+
+  // Apply active mod set on startup
+  if (settings.activeModSet) {
+      const activeSet = settings.modSets.find(s => s.name === settings.activeModSet);
+      if (activeSet) {
+          console.log(`Applying active mod set on startup: ${activeSet.name}`);
+          const result = await window.mods.applyModSet({ modSetFolderNames: activeSet.mods });
+          if (!result.success) {
+              console.error(`Failed to apply active mod set on startup: ${result.error}`);
+          }
+      } else {
+          console.warn(`Active mod set "${settings.activeModSet}" not found. Reverting to manual configuration.`);
+          settings.activeModSet = null;
+          saveSettings();
+      }
+  }
 
   // Initialize the new music player if songs are found
   if (data.bgmPaths && data.bgmPaths.length > 0) {

@@ -22,7 +22,7 @@ function createConfigRuleElement(rule) {
             <div class="config-field"><label>File Path</label><div class="config-field-row"><input type="text" data-key="filePath" value="${rule.filePath || ''}" placeholder="Select a file..." readonly><button class="browse-btn">Browse</button></div></div>
             <div class="config-field"><label>Line Number</label><input type="number" data-key="lineNumber" value="${rule.lineNumber || ''}" min="1" placeholder="e.g., 5"></div>
             <div class="config-field"><label>Line Content Match (optional)</label><input type="text" data-key="lineMatch" value="${rule.lineMatch || ''}" placeholder="e.g., UserName="></div>
-            <div class="config-field"><label>New Line Content (use !#7d2d#!)</label><input type="text" data-key="lineTemplate" value="${rule.lineTemplate || ''}" placeholder="e.g., UserName=!#7d2d#!"></div>
+            <div class="config-field"><label>New Line Content (use !#noyzen#!)</label><input type="text" data-key="lineTemplate" value="${rule.lineTemplate || ''}" placeholder="e.g., UserName=!#noyzen#!"></div>
         </div>`;
     
     const updateRule = () => {
@@ -73,7 +73,7 @@ function createRegistryRuleElement(rule) {
         <div class="registry-rule-body">
             <div class="config-field"><label>Registry Path</label><input type="text" data-key="regPath" value="${rule.regPath || ''}" placeholder="e.g., HKEY_CURRENT_USER\\Software\\MyGame"></div>
             <div class="config-field"><label>Key Name</label><input type="text" data-key="keyName" value="${rule.keyName || ''}" placeholder="e.g., PlayerName_h12345"></div>
-            <div class="config-field"><label>Key Value Template (use !#7d2d#!)</label><input type="text" data-key="keyValueTemplate" value="${rule.keyValueTemplate || ''}" placeholder="e.g., !#7d2d#!"></div>
+            <div class="config-field"><label>Key Value Template (use !#noyzen#!)</label><input type="text" data-key="keyValueTemplate" value="${rule.keyValueTemplate || ''}" placeholder="e.g., !#noyzen#!"></div>
         </div>`;
     
     const updateRule = () => {

@@ -6,6 +6,7 @@ export let settings = {
   playerName: 'Survivor',
   isSharingGame: false,
   createDesktopShortcut: true,
+  activeModSet: null,
   modSets: [],
   configEditorRules: [],
   registryEditorRules: [],
@@ -88,12 +89,16 @@ export function initDefaultSettings() {
         settings.createDesktopShortcut = true;
         changed = true;
     }
+    if (settings.activeModSet === undefined) {
+        settings.activeModSet = null;
+        changed = true;
+    }
     if (!settings.configEditorRules) {
         settings.configEditorRules = [{
             id: Date.now(),
             filePath: '7DaysToDie_Data\\Plugins\\x86_64\\steam_emu.ini',
             lineNumber: 29,
-            lineTemplate: 'UserName=!#7d2d#!',
+            lineTemplate: 'UserName=!#noyzen#!',
             lineMatch: 'UserName=' 
         }];
         changed = true;
@@ -103,7 +108,7 @@ export function initDefaultSettings() {
             id: Date.now() + 1,
             regPath: 'HKEY_CURRENT_USER\\SOFTWARE\\The Fun Pimps\\7 Days To Die',
             keyName: 'PlayerName_h775476977',
-            keyValueTemplate: '!#7d2d#!'
+            keyValueTemplate: '!#noyzen#!'
         }];
         changed = true;
     }
