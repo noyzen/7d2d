@@ -266,26 +266,22 @@
 
 #mod-counts {
     display: flex;
-    justify-content: space-around;
-    padding: 20px;
-    background: rgba(0,0,0,0.2);
-    border-radius: 8px;
-    margin-bottom: 15px;
-    border: 1px solid var(--border-glass);
+    gap: 25px;
+    flex-shrink: 0;
 }
 .mod-count-item {
     display: flex;
-    flex-direction: column;
-    align-items: center;
+    flex-direction: row;
+    align-items: baseline;
     gap: 8px;
-    font-size: 1rem;
+    font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
 .mod-count-item .count {
     font-weight: bold;
     font-family: var(--font-heading);
-    font-size: 2.5rem;
+    font-size: 1.8rem;
     line-height: 1;
 }
 .mod-count-item.enabled { color: var(--primary); }
@@ -297,10 +293,17 @@
     align-items: center;
     gap: 20px;
     margin-bottom: 15px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 10px 20px;
+    border: 1px solid var(--border-glass);
 }
 .mod-search-wrapper {
     position: relative;
     flex-grow: 1;
+    min-width: 250px;
 }
 .mod-search-wrapper i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--fg-med); }
 #mod-search-input {
@@ -408,7 +411,7 @@
     color: var(--fg-med);
     line-height: 1.4;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;  
     overflow: hidden;
     text-overflow: ellipsis;
@@ -417,6 +420,27 @@
 .mod-card.invalid { border-left-color: var(--error); border-left-width: 4px; }
 .mod-card.invalid .mod-title { color: var(--error); }
 .mod-card.invalid .mod-author { color: var(--fg-med) !important; }
+
+.mod-read-more {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    opacity: 0.8;
+    cursor: pointer;
+    padding: 4px 0 0 0;
+    font-size: 0.85rem;
+    font-weight: bold;
+    align-self: flex-start;
+    transition: opacity 0.2s;
+}
+.mod-read-more:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+.mod-read-more i {
+    margin-left: 4px;
+}
+
 
 /* Mod Label Icons */
 .mod-label-icon {
@@ -675,6 +699,7 @@
   }
   .mod-set-action-btn {
     flex-grow: 1;
+    flex-basis: 150px;
   }
 
   /* --- CHAT PAGE --- */
@@ -712,7 +737,11 @@
   .mod-controls-header {
     flex-direction: column;
     align-items: stretch;
-    gap: 10px;
+    gap: 15px;
+    padding: 15px;
+  }
+  #mod-counts {
+    justify-content: space-around;
   }
   #mod-search-input {
     width: 100%;

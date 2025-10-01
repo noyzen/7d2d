@@ -1,6 +1,6 @@
 import { rendererEvents } from '../events.js';
 import { settings, saveSettings } from '../state.js';
-import { showPrompt, showConfirmationPrompt, showAlert } from '../ui.js';
+import { showPrompt, showConfirmationPrompt, showAlert, sanitizeText } from '../ui.js';
 
 let allMods = [];
 let searchQuery = '';
@@ -95,6 +95,12 @@ function createModElement(mod, isDisplayedAsEnabled) {
   if (!mod.isValid) modEl.classList.add('invalid');
   modEl.classList.toggle('enabled', isDisplayedAsEnabled);
 
+  // Sanitize all data from ModInfo.xml
+  const safeName = sanitizeText(mod.name);
+  const safeAuthor = sanitizeText(mod.author);
+  const safeVersion = sanitizeText(mod.version);
+  const safeDescription = sanitizeText(mod.description);
+
   const label = settings.modLabels[mod.folderName];
   let labelIconHtml = '';
   if (label) {
@@ -115,19 +121,41 @@ function createModElement(mod, isDisplayedAsEnabled) {
     <div class="mod-status-icon">
         <i class="fa-solid fa-circle-check"></i>
     </div>
-    <div class="mod-info" title="${mod.description}">
+    <div class="mod-info" title="${safeDescription}">
       <h3 class="mod-title">
         ${!mod.isValid ? '<i class="fa-solid fa-triangle-exclamation" title="Invalid Mod"></i>' : ''}
-        <span>${mod.name}</span>
+        <span>${safeName}</span>
         ${labelIconHtml}
       </h3>
       <div class="mod-meta">
-        <p class="mod-author">by ${mod.author}</p>
-        <span class="mod-version">${mod.version}</span>
+        <p class="mod-author">by ${safeAuthor}</p>
+        <span class="mod-version">${safeVersion}</span>
       </div>
-      <p class="mod-desc">${mod.description}</p>
+      <p class="mod-desc">${safeDescription}</p>
     </div>
   `;
+
+  const modInfo = modEl.querySelector('.mod-info');
+  const modDesc = modEl.querySelector('.mod-desc');
+
+  // Use a timeout to allow the DOM to render before checking element dimensions
+  setTimeout(() => {
+    if (modDesc.scrollHeight > modDesc.clientHeight) {
+      const readMoreBtn = document.createElement('button');
+      readMoreBtn.className = 'mod-read-more';
+      readMoreBtn.innerHTML = 'Read More <i class="fa-solid fa-angle-right"></i>';
+      readMoreBtn.title = 'View full description';
+      modInfo.appendChild(readMoreBtn);
+      
+      readMoreBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent toggling the mod
+        showAlert(
+          mod.name, 
+          `<p style="text-align: left; white-space: pre-wrap; line-height: 1.6;">${safeDescription}</p>`
+        );
+      });
+    }
+  }, 0);
 
   modEl.addEventListener('contextmenu', (e) => {
     showContextMenu(e, mod.folderName);
@@ -190,7 +218,7 @@ function renderModSets() {
         setCard.dataset.setName = set.name;
         setCard.innerHTML = `
             <div class="mod-set-info">
-                <span class="mod-set-name">${set.name}</span>
+                <span class="mod-set-name">${sanitizeText(set.name)}</span>
                 <span class="mod-set-count">${set.mods.length} mods</span>
             </div>
             <div class="mod-set-actions">
@@ -218,9 +246,10 @@ function renderModSets() {
         });
         
         setCard.querySelector('.delete-set-btn').addEventListener('click', async () => {
+            const safeSetName = sanitizeText(set.name);
             const confirmed = await showConfirmationPrompt(
                 'Delete Mod Set',
-                `<p>Are you sure you want to delete the mod set <strong>"${set.name}"</strong>?</p>`,
+                `<p>Are you sure you want to delete the mod set <strong>"${safeSetName}"</strong>?</p>`,
                 'Delete',
                 'Cancel'
             );
@@ -287,7 +316,7 @@ function renderModSetActions() {
         applyBtn.addEventListener('click', () => {
             const modSet = settings.modSets.find(s => s.name === selectedModSetName);
             if (!modSet) return;
-            applyModList(modSet.mods, `Apply the mod set "${selectedModSetName}"?`);
+            applyModList(modSet.mods, { isApplyingSet: true, setName: selectedModSetName });
         });
 
         getEl('set-enable-all-btn').addEventListener('click', () => {
@@ -352,10 +381,17 @@ function renderModLists() {
     listEl.scrollTop = scrollPosition;
 }
 
-async function applyModList(modFolderNames, confirmationMessage) {
+async function applyModList(modFolderNames, promptInfo) {
+    let confirmationMessage;
+    if (typeof promptInfo === 'object' && promptInfo.isApplyingSet) {
+        confirmationMessage = `<p>Apply the mod set <strong>"${sanitizeText(promptInfo.setName)}"</strong>?</p>`;
+    } else {
+        confirmationMessage = `<p>${sanitizeText(promptInfo)}</p>`;
+    }
+
     const confirmed = await showConfirmationPrompt(
         'Apply Mod Configuration',
-        `<p>${confirmationMessage}</p>`,
+        confirmationMessage,
         'Apply',
         'Cancel'
     );
@@ -425,9 +461,10 @@ function setupEventListeners() {
 
         const existingSetIndex = settings.modSets.findIndex(s => s.name === setName);
         if (existingSetIndex > -1) {
+            const safeSetName = sanitizeText(setName);
             const confirmed = await showConfirmationPrompt(
                 'Overwrite Mod Set',
-                `<p>A mod set named <strong>"${setName}"</strong> already exists. Overwrite it?</p>`,
+                `<p>A mod set named <strong>"${safeSetName}"</strong> already exists. Overwrite it?</p>`,
                 'Overwrite',
                 'Cancel'
             );
