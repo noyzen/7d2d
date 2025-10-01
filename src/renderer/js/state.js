@@ -7,6 +7,7 @@ export let settings = {
   isSharingGame: false,
   createDesktopShortcut: true,
   activeModSet: null,
+  modLabels: {},
   modSets: [],
   configEditorRules: [],
   registryEditorRules: [],
@@ -91,6 +92,10 @@ export function initDefaultSettings() {
     }
     if (settings.activeModSet === undefined) {
         settings.activeModSet = null;
+        changed = true;
+    }
+    if (settings.modLabels === undefined) {
+        settings.modLabels = {};
         changed = true;
     }
     if (!settings.configEditorRules) {

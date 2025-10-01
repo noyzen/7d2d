@@ -378,7 +378,12 @@
 }
 .mod-title {
     margin: 0; font-size: 1.05rem; display: flex; align-items: center;
-    gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    gap: 8px; white-space: nowrap; overflow: hidden;
+}
+.mod-title > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-grow: 1;
 }
 .mod-meta { 
     display: flex; align-items: center; gap: 15px; font-size: 0.8rem; 
@@ -412,6 +417,20 @@
 .mod-card.invalid { border-left-color: var(--error); border-left-width: 4px; }
 .mod-card.invalid .mod-title { color: var(--error); }
 .mod-card.invalid .mod-author { color: var(--fg-med) !important; }
+
+/* Mod Label Icons */
+.mod-label-icon {
+  font-size: 0.9em;
+  opacity: 0.8;
+  flex-shrink: 0; /* Prevents the icon from shrinking */
+}
+.mod-label-icon.safe { color: #4caf50; }
+.mod-label-icon.testing { color: #ffc107; }
+.mod-label-icon.broken { color: var(--error); }
+
+.mod-card.invalid .mod-label-icon.broken {
+    display: none; /* Hide redundant broken icon if mod is already invalid */
+}
 
 /* --- PAGE: SETTINGS --- */
 .settings-container { display: flex; flex-direction: column; gap: 15px; max-width: 700px; }

@@ -6,8 +6,73 @@ let allMods = [];
 let searchQuery = '';
 let isLoading = false;
 let selectedModSetName = settings.activeModSet; // Initialize with saved setting
+let contextMenuTargetMod = null; // To store which mod the context menu is for
 
 function getEl(id) { return document.getElementById(id); }
+
+function setupContextMenu() {
+    const menu = getEl('mod-context-menu');
+    if (!menu) return;
+
+    // Hide on click outside
+    window.addEventListener('click', () => {
+        menu.classList.add('hidden');
+        contextMenuTargetMod = null;
+    });
+
+    menu.addEventListener('click', (e) => {
+        const action = e.target.closest('li')?.dataset.action;
+        if (action && contextMenuTargetMod) {
+            const currentLabel = settings.modLabels[contextMenuTargetMod] || null;
+
+            if (action === 'clear') {
+                delete settings.modLabels[contextMenuTargetMod];
+            } else if (action === currentLabel) {
+                // If clicking the same label again, clear it.
+                delete settings.modLabels[contextMenuTargetMod];
+            } else {
+                settings.modLabels[contextMenuTargetMod] = action;
+            }
+
+            saveSettings();
+            // Re-render the mod lists to update the UI
+            renderModLists();
+        }
+    });
+}
+
+function showContextMenu(e, modFolderName) {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent the window click listener from firing immediately
+    const menu = getEl('mod-context-menu');
+    if (!menu) return;
+
+    contextMenuTargetMod = modFolderName;
+    const currentLabel = settings.modLabels[modFolderName] || null;
+    
+    // Update active state
+    menu.querySelectorAll('li').forEach(li => {
+        li.classList.remove('active');
+        if (li.dataset.action === currentLabel) {
+            li.classList.add('active');
+        }
+    });
+
+    // Position and show menu
+    const { clientX: mouseX, clientY: mouseY } = e;
+    menu.style.top = `${mouseY}px`;
+    menu.style.left = `${mouseX}px`;
+    menu.classList.remove('hidden');
+
+    // Prevent menu from going off-screen
+    const rect = menu.getBoundingClientRect();
+    if (rect.bottom > window.innerHeight) {
+        menu.style.top = `${mouseY - rect.height}px`;
+    }
+    if (rect.right > window.innerWidth) {
+        menu.style.left = `${mouseX - rect.width}px`;
+    }
+}
 
 function renderModCounts(enabledCount, disabledCount) {
     const countsEl = getEl('mod-counts');
@@ -28,6 +93,22 @@ function createModElement(mod, isDisplayedAsEnabled) {
   if (!mod.isValid) modEl.classList.add('invalid');
   modEl.classList.toggle('enabled', isDisplayedAsEnabled);
 
+  const label = settings.modLabels[mod.folderName];
+  let labelIconHtml = '';
+  if (label) {
+      const icons = {
+          safe: 'fa-shield-halved',
+          testing: 'fa-flask-vial',
+          broken: 'fa-triangle-exclamation'
+      };
+      const titles = {
+          safe: 'Marked as Safe',
+          testing: 'Marked as Testing',
+          broken: 'Marked as Broken'
+      };
+      labelIconHtml = `<i class="fa-solid ${icons[label]} mod-label-icon ${label}" title="${titles[label]}"></i>`;
+  }
+
   modEl.innerHTML = `
     <div class="mod-status-icon">
         <i class="fa-solid fa-circle-check"></i>
@@ -35,7 +116,8 @@ function createModElement(mod, isDisplayedAsEnabled) {
     <div class="mod-info" title="${mod.description}">
       <h3 class="mod-title">
         ${!mod.isValid ? '<i class="fa-solid fa-triangle-exclamation" title="Invalid Mod"></i>' : ''}
-        ${mod.name}
+        <span>${mod.name}</span>
+        ${labelIconHtml}
       </h3>
       <div class="mod-meta">
         <p class="mod-author">by ${mod.author}</p>
@@ -44,6 +126,10 @@ function createModElement(mod, isDisplayedAsEnabled) {
       <p class="mod-desc">${mod.description}</p>
     </div>
   `;
+
+  modEl.addEventListener('contextmenu', (e) => {
+    showContextMenu(e, mod.folderName);
+  });
 
   modEl.addEventListener('click', async () => {
     if (modEl.classList.contains('processing')) return;
@@ -342,5 +428,6 @@ function setupEventListeners() {
 
 export function init() {
     setupEventListeners();
+    setupContextMenu();
     loadMods();
 }
