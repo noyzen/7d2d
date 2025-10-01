@@ -50,7 +50,7 @@ function setupContextMenu() {
             saveSettings();
             renderModLists(); // Re-render to show new icon on the mod card.
             
-            menu.classList.add('hidden');
+            contextMenu.classList.add('hidden');
             contextMenuTargetMod = null;
         }
     });
@@ -538,8 +538,11 @@ function setupFilterListeners() {
     getEl('page-mods').querySelectorAll('.status-filter .filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             if (btn.classList.contains('active')) return;
-            getEl('page-mods').querySelector('.status-filter .filter-btn.active').classList.remove('active');
-            getEl('page-mods').querySelector('.status-filter .filter-btn.active').setAttribute('aria-pressed', 'false');
+            const activeBtn = getEl('page-mods').querySelector('.status-filter .filter-btn.active');
+            if (activeBtn) {
+                activeBtn.classList.remove('active');
+                activeBtn.setAttribute('aria-pressed', 'false');
+            }
             
             btn.classList.add('active');
             btn.setAttribute('aria-pressed', 'true');
