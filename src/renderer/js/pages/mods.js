@@ -62,6 +62,7 @@ function showContextMenu(e, modFolderName) {
     const menu = getEl('mod-context-menu');
     if (!menu) return;
 
+    // Toggle behavior: if menu is open for the same mod, close it.
     if (!menu.classList.contains('hidden') && contextMenuTargetMod === modFolderName) {
         menu.classList.add('hidden');
         contextMenuTargetMod = null;
@@ -71,39 +72,42 @@ function showContextMenu(e, modFolderName) {
     contextMenuTargetMod = modFolderName;
     const currentLabel = settings.modLabels[modFolderName] || null;
     
-    menu.querySelectorAll('li').forEach(li => {
-        li.classList.remove('active');
-        if (li.dataset.action === currentLabel) {
-            li.classList.add('active');
-        }
+    // Update active state on menu items
+    menu.querySelectorAll('li[data-action]').forEach(li => {
+        li.classList.toggle('active', li.dataset.action === currentLabel);
     });
 
+    // Make menu visible to calculate its dimensions
     menu.classList.remove('hidden');
     const menuWidth = menu.offsetWidth;
     const menuHeight = menu.offsetHeight;
     
     const btnRect = e.currentTarget.getBoundingClientRect();
-    const margin = 5;
+    const margin = 8; // A bit more space from edges
 
+    // --- Robust Positioning Logic ---
+
+    // Vertical positioning: Prefer below, flip above if there's no space
     let topPos = btnRect.bottom + margin;
-    let leftPos = btnRect.right - menuWidth;
-
     if (topPos + menuHeight > window.innerHeight && (btnRect.top - menuHeight - margin) > 0) {
         topPos = btnRect.top - menuHeight - margin;
     }
-    if (topPos < 0) {
-        topPos = margin;
+
+    // Horizontal positioning: Prefer aligning right edges, but ensure it fits
+    let leftPos = btnRect.right - menuWidth;
+    if (leftPos < margin) {
+        // If aligning right pushes it off-screen left, align to the button's left edge instead
+        leftPos = btnRect.left;
     }
-    if (leftPos + menuWidth > window.innerWidth) {
-        leftPos = window.innerWidth - menuWidth - margin;
-    }
-    if (leftPos < 0) {
-        leftPos = margin;
-    }
+    
+    // Clamp final positions to be within the viewport
+    topPos = Math.max(margin, Math.min(topPos, window.innerHeight - menuHeight - margin));
+    leftPos = Math.max(margin, Math.min(leftPos, window.innerWidth - menuWidth - margin));
 
     menu.style.top = `${topPos}px`;
     menu.style.left = `${leftPos}px`;
 }
+
 
 function renderModCounts(enabledCount, disabledCount) {
     const countsEl = getEl('mod-counts');
@@ -326,7 +330,7 @@ function renderModSetActions() {
         ));
     } else {
         actionsEl.innerHTML = `
-            <p style="font-size: 0.9rem; color: var(--fg-med); text-align: center; margin: 0 0 10px;">Editing "<strong style="color: var(--primary);">${sanitizeText(selectedModSetName)}</strong>". Changes are applied automatically.</p>
+            <p style="font-size: 0.9rem; color: var(--fg-med); text-align: center; margin: 0 0 10px;">Editing "<strong style="color: var(--primary);">${sanitizeText(selectedModSetName)}</strong>".</p>
             <div class="sub-section-divider"></div>
             <button id="set-enable-all-btn" class="mod-set-action-btn enable-all" title="Add all available mods to this set"><i class="fa-solid fa-folder-plus"></i> Add All to Set</button>
             <button id="set-disable-all-btn" class="mod-set-action-btn disable-all" title="Remove all mods from this set"><i class="fa-solid fa-folder-minus"></i> Remove All from Set</button>
