@@ -29,6 +29,9 @@ function createModElement(mod, isDisplayedAsEnabled) {
   modEl.classList.toggle('enabled', isDisplayedAsEnabled);
 
   modEl.innerHTML = `
+    <div class="mod-status-icon">
+        <i class="fa-solid fa-circle-check"></i>
+    </div>
     <div class="mod-info" title="${mod.description}">
       <h3 class="mod-title">
         ${!mod.isValid ? '<i class="fa-solid fa-triangle-exclamation" title="Invalid Mod"></i>' : ''}
@@ -39,9 +42,6 @@ function createModElement(mod, isDisplayedAsEnabled) {
         <span class="mod-version">${mod.version}</span>
       </div>
       <p class="mod-desc">${mod.description}</p>
-    </div>
-    <div class="mod-status-icon">
-        <i class="fa-solid fa-circle-check"></i>
     </div>
   `;
 
