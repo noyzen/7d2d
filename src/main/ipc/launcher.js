@@ -185,8 +185,9 @@ async function applyConfigEdits(playerName, configEditorRules) {
     for (const rule of configEditorRules) {
         if (!rule.filePath || !rule.lineNumber || !rule.lineTemplate) continue;
 
-        // Resolve the relative path to an absolute path before using it
-        const absolutePath = path.join(CWD, rule.filePath);
+        // Resolve the path. If rule.filePath is absolute, it will be used directly.
+        // If it's relative, it will be resolved from CWD. This is more robust.
+        const absolutePath = path.resolve(CWD, rule.filePath);
         
         if (!fs.existsSync(absolutePath)) throw new Error(`Config file not found: ${absolutePath}`);
 
@@ -198,7 +199,7 @@ async function applyConfigEdits(playerName, configEditorRules) {
         if (rule.lineMatch && !lines[lineIndex].includes(rule.lineMatch)) {
             throw new Error(`Validation failed for ${path.basename(rule.filePath)}: Line ${rule.lineNumber} does not contain "${rule.lineMatch}".`);
         }
-        lines[lineIndex] = rule.lineTemplate.replace(/##7d2dlauncher-username##/g, playerName);
+        lines[lineIndex] = rule.lineTemplate.replace(/!#7d2d#!/g, playerName);
         fs.writeFileSync(absolutePath, lines.join('\n'), 'utf8');
     }
 }
@@ -207,7 +208,7 @@ async function applyRegistryEdits(playerName, registryEditorRules) {
     if (process.platform !== 'win32' || !playerName || !registryEditorRules || registryEditorRules.length === 0) return;
     for (const rule of registryEditorRules) {
         if (!rule.regPath || !rule.keyName || !rule.keyValueTemplate) continue;
-        const newValue = rule.keyValueTemplate.replace(/##7d2dlauncher-username##/g, playerName);
+        const newValue = rule.keyValueTemplate.replace(/!#7d2d#!/g, playerName);
 
         // Using exec to ensure the command is run within a shell, which can resolve certain environment/permission subtleties.
         // It's also more explicit about quoting arguments, which is what the 'reg' command-line tool expects.

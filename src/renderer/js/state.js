@@ -91,9 +91,9 @@ export function initDefaultSettings() {
     if (!settings.configEditorRules) {
         settings.configEditorRules = [{
             id: Date.now(),
-            filePath: '7DaysToDie_Data/Plugins/x86_64/steam_emu.ini',
+            filePath: '7DaysToDie_Data\\Plugins\\x86_64\\steam_emu.ini',
             lineNumber: 29,
-            lineTemplate: 'UserName=##7d2dlauncher-username##',
+            lineTemplate: 'UserName=!#7d2d#!',
             lineMatch: 'UserName=' 
         }];
         changed = true;
@@ -103,7 +103,7 @@ export function initDefaultSettings() {
             id: Date.now() + 1,
             regPath: 'HKEY_CURRENT_USER\\SOFTWARE\\The Fun Pimps\\7 Days To Die',
             keyName: 'PlayerName_h775476977',
-            keyValueTemplate: '##7d2dlauncher-username##'
+            keyValueTemplate: '!#7d2d#!'
         }];
         changed = true;
     }
