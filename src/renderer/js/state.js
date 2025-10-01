@@ -91,7 +91,7 @@ export function initDefaultSettings() {
     if (!settings.configEditorRules) {
         settings.configEditorRules = [{
             id: Date.now(),
-            filePath: 'C:\\Path\\To\\Your\\Game\\steam_emu.ini',
+            filePath: '7DaysToDie_Data/Plugins/x86_64/steam_emu.ini',
             lineNumber: 29,
             lineTemplate: 'UserName=##7d2dlauncher-username##',
             lineMatch: 'UserName=' 

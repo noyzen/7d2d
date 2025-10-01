@@ -162,10 +162,19 @@ function handleSelectFile() {
     ipcMain.handle('launcher:select-file', async () => {
         const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
           properties: ['openFile'],
-          title: 'Select Configuration File'
+          title: 'Select Configuration File',
+          defaultPath: CWD, // Start dialog in the game folder for convenience
         });
+
         if (!canceled && filePaths.length > 0) {
-          return { success: true, filePath: filePaths[0] };
+          const absolutePath = filePaths[0];
+          // For portability and security, ensure the file is within the game directory.
+          if (!absolutePath.toLowerCase().startsWith(CWD.toLowerCase())) {
+              dialog.showErrorBox('Invalid File Path', 'Please select a configuration file located within the game directory.');
+              return { success: false };
+          }
+          const relativePath = path.relative(CWD, absolutePath);
+          return { success: true, filePath: relativePath };
         }
         return { success: false };
     });
@@ -175,17 +184,22 @@ async function applyConfigEdits(playerName, configEditorRules) {
     if (!playerName || !configEditorRules || configEditorRules.length === 0) return;
     for (const rule of configEditorRules) {
         if (!rule.filePath || !rule.lineNumber || !rule.lineTemplate) continue;
-        if (!fs.existsSync(rule.filePath)) throw new Error(`Config file not found: ${rule.filePath}`);
 
-        const lines = fs.readFileSync(rule.filePath, 'utf8').split(/\r?\n/);
+        // Resolve the relative path to an absolute path before using it
+        const absolutePath = path.join(CWD, rule.filePath);
+        
+        if (!fs.existsSync(absolutePath)) throw new Error(`Config file not found: ${absolutePath}`);
+
+        const lines = fs.readFileSync(absolutePath, 'utf8').split(/\r?\n/);
         const lineIndex = rule.lineNumber - 1;
-        if (lineIndex < 0 || lineIndex >= lines.length) throw new Error(`Line number ${rule.lineNumber} is out of bounds for file ${rule.filePath}`);
+        
+        if (lineIndex < 0 || lineIndex >= lines.length) throw new Error(`Line number ${rule.lineNumber} is out of bounds for file ${absolutePath}`);
 
         if (rule.lineMatch && !lines[lineIndex].includes(rule.lineMatch)) {
             throw new Error(`Validation failed for ${path.basename(rule.filePath)}: Line ${rule.lineNumber} does not contain "${rule.lineMatch}".`);
         }
         lines[lineIndex] = rule.lineTemplate.replace(/##7d2dlauncher-username##/g, playerName);
-        fs.writeFileSync(rule.filePath, lines.join('\n'), 'utf8');
+        fs.writeFileSync(absolutePath, lines.join('\n'), 'utf8');
     }
 }
 
