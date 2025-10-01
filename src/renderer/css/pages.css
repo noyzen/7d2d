@@ -340,6 +340,10 @@
     cursor: pointer;
 }
 .mod-card:hover { background: rgba(40, 40, 40, 0.9); border-color: rgba(255, 255, 255, 0.3); }
+.mod-card.processing {
+    pointer-events: none;
+    opacity: 0.6;
+}
 
 .mod-card.enabled {
     border-color: var(--primary);
@@ -378,10 +382,32 @@
     flex-direction: column;
     gap: 4px;
     overflow: hidden;
+    position: relative; /* For options button */
 }
+.mod-options-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 2;
+    background: transparent;
+    border: none;
+    color: var(--fg-med);
+    font-size: 1.1rem;
+    padding: 5px 8px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+.mod-options-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--fg-light);
+}
+
 .mod-title {
     margin: 0; font-size: 1.05rem; display: flex; align-items: center;
-    gap: 8px; white-space: nowrap; overflow: hidden;
+    white-space: nowrap; overflow: hidden;
+    padding-right: 40px; /* Space for options btn */
 }
 .mod-title > span {
     overflow: hidden;
@@ -443,10 +469,16 @@
 
 
 /* Mod Label Icons */
+.mod-label-icon-container {
+    flex-shrink: 0;
+    width: 24px;
+    text-align: center;
+    margin-left: 8px;
+}
 .mod-label-icon {
   font-size: 0.9em;
   opacity: 0.8;
-  flex-shrink: 0; /* Prevents the icon from shrinking */
+  flex-shrink: 0;
 }
 .mod-label-icon.safe { color: #4caf50; }
 .mod-label-icon.testing { color: #ffc107; }
@@ -679,7 +711,7 @@
 /* --- RESPONSIVE DESIGN --- */
 
 @media (max-width: 1100px) {
-  /* --- MODS PAGE (FIXED) --- */
+  /* --- MODS PAGE (FIXED & COMPACT) --- */
   .mods-layout {
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr; /* Top panel takes content height, bottom takes the rest */
@@ -687,19 +719,36 @@
   }
   .mod-sets-panel {
     padding: 15px;
-    max-height: 35vh; /* Constrain height to force internal scrolling */
+    max-height: 30vh; /* Constrain height to force internal scrolling */
+  }
+  .mod-sets-header {
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+  }
+  .mod-sets-header h2 {
+    font-size: 1.1rem;
+  }
+  #save-mod-set-btn {
+    padding: 5px 10px;
+    font-size: 0.8rem;
   }
   .mod-sets-list {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   }
+  .mod-set-card {
+    padding: 10px 12px;
+  }
   #mod-set-actions {
     flex-direction: row;
     flex-wrap: wrap;
+    gap: 8px;
   }
   .mod-set-action-btn {
     flex-grow: 1;
     flex-basis: 150px;
+    padding: 8px;
+    font-size: 0.9rem;
   }
 
   /* --- CHAT PAGE --- */

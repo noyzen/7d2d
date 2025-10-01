@@ -15,9 +15,11 @@ function setupContextMenu() {
     if (!menu) return;
 
     // Hide on click outside
-    window.addEventListener('click', () => {
-        menu.classList.add('hidden');
-        contextMenuTargetMod = null;
+    window.addEventListener('click', (e) => {
+        if (!menu.contains(e.target)) {
+            menu.classList.add('hidden');
+            contextMenuTargetMod = null;
+        }
     });
 
     menu.addEventListener('click', (e) => {
@@ -59,18 +61,18 @@ function showContextMenu(e, modFolderName) {
     });
 
     // Position and show menu
-    const { clientX: mouseX, clientY: mouseY } = e;
-    menu.style.top = `${mouseY}px`;
-    menu.style.left = `${mouseX}px`;
+    const btnRect = e.currentTarget.getBoundingClientRect();
+    menu.style.top = `${btnRect.bottom + 5}px`;
+    menu.style.left = `${btnRect.right - menu.offsetWidth}px`;
     menu.classList.remove('hidden');
 
     // Prevent menu from going off-screen
-    const rect = menu.getBoundingClientRect();
-    if (rect.bottom > window.innerHeight) {
-        menu.style.top = `${mouseY - rect.height}px`;
+    const menuRect = menu.getBoundingClientRect();
+    if (menuRect.bottom > window.innerHeight) {
+        menu.style.top = `${btnRect.top - menuRect.height - 5}px`;
     }
-    if (rect.right > window.innerWidth) {
-        menu.style.left = `${mouseX - rect.width}px`;
+    if (menuRect.left < 0) {
+        menu.style.left = `${btnRect.left}px`;
     }
 }
 
@@ -92,6 +94,7 @@ function renderModCounts(enabledCount, disabledCount) {
 function createModElement(mod, isDisplayedAsEnabled) {
   const modEl = document.createElement('div');
   modEl.className = 'mod-card';
+  modEl.dataset.folderName = mod.folderName;
   if (!mod.isValid) modEl.classList.add('invalid');
   modEl.classList.toggle('enabled', isDisplayedAsEnabled);
 
@@ -121,17 +124,18 @@ function createModElement(mod, isDisplayedAsEnabled) {
     <div class="mod-status-icon">
         <i class="fa-solid fa-circle-check"></i>
     </div>
-    <div class="mod-info" title="${safeDescription}">
-      <h3 class="mod-title">
-        ${!mod.isValid ? '<i class="fa-solid fa-triangle-exclamation" title="Invalid Mod"></i>' : ''}
-        <span>${safeName}</span>
-        ${labelIconHtml}
-      </h3>
-      <div class="mod-meta">
-        <p class="mod-author">by ${safeAuthor}</p>
-        <span class="mod-version">${safeVersion}</span>
-      </div>
-      <p class="mod-desc">${safeDescription}</p>
+    <div class="mod-info">
+        <button class="mod-options-btn" title="Mod Options"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+        <h3 class="mod-title">
+            ${!mod.isValid ? '<i class="fa-solid fa-triangle-exclamation" title="Invalid Mod"></i>' : ''}
+            <span>${safeName}</span>
+            <span class="mod-label-icon-container">${labelIconHtml}</span>
+        </h3>
+        <div class="mod-meta">
+            <p class="mod-author">by ${safeAuthor}</p>
+            <span class="mod-version">${safeVersion}</span>
+        </div>
+        <p class="mod-desc">${safeDescription}</p>
     </div>
   `;
 
@@ -157,7 +161,7 @@ function createModElement(mod, isDisplayedAsEnabled) {
     }
   }, 0);
 
-  modEl.addEventListener('contextmenu', (e) => {
+  modEl.querySelector('.mod-options-btn').addEventListener('click', (e) => {
     showContextMenu(e, mod.folderName);
   });
 
@@ -179,22 +183,36 @@ function createModElement(mod, isDisplayedAsEnabled) {
             await showAlert('Error', `Could not toggle mod: ${result.error}`);
         }
         modEl.classList.remove('processing');
-    } else { // Mod Set Edit Mode: Modify the set definition in memory
+    } else { // Mod Set Edit & Apply Mode
         const selectedSet = settings.modSets.find(s => s.name === selectedModSetName);
         if (!selectedSet) return;
-
+        
         const modInSet = selectedSet.mods.includes(mod.folderName);
+        const originalMods = [...selectedSet.mods]; // Backup for revert on failure
+
         if (modInSet) {
             selectedSet.mods = selectedSet.mods.filter(m => m !== mod.folderName);
         } else {
             selectedSet.mods.push(mod.folderName);
         }
+        
         saveSettings();
         
-        // Rerender UI components to reflect the change in the set definition
-        renderModLists();
-        renderModSets();
-        renderModSetActions();
+        modEl.classList.add('processing');
+        const result = await window.mods.applyModSet({ modSetFolderNames: selectedSet.mods });
+        
+        const scrollPos = getEl('mod-list')?.scrollTop;
+
+        if (result.success) {
+            await loadMods(scrollPos);
+        } else {
+            await showAlert('Error', `Could not apply change: ${result.error}`);
+            // Revert the change in memory
+            selectedSet.mods = originalMods;
+            saveSettings();
+            // Reload UI to show reverted state
+            await loadMods(scrollPos);
+        }
     }
   });
 
@@ -269,21 +287,6 @@ function renderModSets() {
     });
 }
 
-function isSetApplied() {
-    if (selectedModSetName === null) return true;
-    const selectedSet = settings.modSets.find(s => s.name === selectedModSetName);
-    if (!selectedSet) return false;
-
-    const enabledFolders = new Set(allMods.filter(m => m.isEnabled).map(m => m.folderName));
-    const setFolders = new Set(selectedSet.mods);
-    
-    if (enabledFolders.size !== setFolders.size) return false;
-    for (const mod of setFolders) {
-        if (!enabledFolders.has(mod)) return false;
-    }
-    return true;
-}
-
 function renderModSetActions() {
     const actionsEl = getEl('mod-set-actions');
     if (!actionsEl) return;
@@ -303,30 +306,18 @@ function renderModSetActions() {
         ));
     } else {
         actionsEl.innerHTML = `
-            <button id="apply-mod-set-btn" class="mod-set-action-btn apply"><i class="fa-solid fa-check"></i> Apply Set</button>
+            <p style="font-size: 0.9rem; color: var(--fg-med); text-align: center; margin: 0 0 10px;">Editing "<strong style="color: var(--primary);">${sanitizeText(selectedModSetName)}</strong>". Changes are applied automatically.</p>
             <div class="sub-section-divider"></div>
             <button id="set-enable-all-btn" class="mod-set-action-btn enable-all" title="Add all available mods to this set"><i class="fa-solid fa-folder-plus"></i> Add All to Set</button>
             <button id="set-disable-all-btn" class="mod-set-action-btn disable-all" title="Remove all mods from this set"><i class="fa-solid fa-folder-minus"></i> Remove All from Set</button>
         `;
-        const applyBtn = getEl('apply-mod-set-btn');
-        if (isSetApplied()) {
-            applyBtn.disabled = true;
-            applyBtn.innerHTML = `<i class="fa-solid fa-check-double"></i> Set is Active`;
-        }
-        applyBtn.addEventListener('click', () => {
-            const modSet = settings.modSets.find(s => s.name === selectedModSetName);
-            if (!modSet) return;
-            applyModList(modSet.mods, { isApplyingSet: true, setName: selectedModSetName });
-        });
 
         getEl('set-enable-all-btn').addEventListener('click', () => {
             const selectedSet = settings.modSets.find(s => s.name === selectedModSetName);
             if (selectedSet) {
                 selectedSet.mods = allMods.map(m => m.folderName);
                 saveSettings();
-                renderModLists();
-                renderModSets();
-                renderModSetActions();
+                applyModList(selectedSet.mods, { isApplyingSet: true, setName: selectedModSetName, noPrompt: true });
             }
         });
         getEl('set-disable-all-btn').addEventListener('click', () => {
@@ -334,9 +325,7 @@ function renderModSetActions() {
            if (selectedSet) {
                selectedSet.mods = [];
                saveSettings();
-               renderModLists();
-               renderModSets();
-               renderModSetActions();
+               applyModList(selectedSet.mods, { isApplyingSet: true, setName: selectedModSetName, noPrompt: true });
            }
         });
     }
@@ -382,19 +371,21 @@ function renderModLists() {
 }
 
 async function applyModList(modFolderNames, promptInfo) {
-    let confirmationMessage;
-    if (typeof promptInfo === 'object' && promptInfo.isApplyingSet) {
-        confirmationMessage = `<p>Apply the mod set <strong>"${sanitizeText(promptInfo.setName)}"</strong>?</p>`;
-    } else {
-        confirmationMessage = `<p>${sanitizeText(promptInfo)}</p>`;
+    let confirmed = true;
+    if (!(typeof promptInfo === 'object' && promptInfo.noPrompt)) {
+        let confirmationMessage;
+        if (typeof promptInfo === 'object' && promptInfo.isApplyingSet) {
+            confirmationMessage = `<p>Apply the mod set <strong>"${sanitizeText(promptInfo.setName)}"</strong>?</p>`;
+        } else {
+            confirmationMessage = `<p>${sanitizeText(promptInfo)}</p>`;
+        }
+        confirmed = await showConfirmationPrompt(
+            'Apply Mod Configuration',
+            confirmationMessage,
+            'Apply',
+            'Cancel'
+        );
     }
-
-    const confirmed = await showConfirmationPrompt(
-        'Apply Mod Configuration',
-        confirmationMessage,
-        'Apply',
-        'Cancel'
-    );
     if (!confirmed) return;
 
     const listEl = getEl('mod-list');
