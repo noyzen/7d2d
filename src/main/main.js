@@ -1,5 +1,6 @@
 
 
+
 const { app, BrowserWindow, Menu, globalShortcut, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -11,6 +12,7 @@ const modsIpc = require('./ipc/mods');
 const backupIpc = require('./ipc/backup');
 const lanIpc = require('./ipc/lan');
 const transferIpc = require('./ipc/transfer');
+const shortcutIpc = require('./ipc/shortcut');
 
 let mainWindow;
 
@@ -31,86 +33,6 @@ if (!gotTheLock) {
       mainWindow.focus();
     }
   });
-}
-
-function createDesktopShortcut() {
-  if (process.platform !== 'win32' || !app.isPackaged) return;
-
-  try {
-    let settings = {};
-    if (fs.existsSync(SETTINGS_PATH)) {
-      try {
-        settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
-      } catch (e) {
-        console.warn("Could not load settings for shortcut creation.", e);
-      }
-    }
-
-    if (settings.createDesktopShortcut === false) {
-      console.log('Desktop shortcut creation is disabled in settings.');
-      return;
-    }
-
-    const packageJson = require(path.join(app.getAppPath(), 'package.json'));
-    const appId = 'com.noyzen.7d2dlauncher';
-    const productName = app.name;
-    const shortcutPath = path.join(app.getPath('desktop'), `${productName}.lnk`);
-
-    // Use CWD which correctly resolves the path for portable apps, unlike
-    // app.getPath('exe') which may point to a temporary directory during first run.
-    const exeName = path.basename(app.getPath('exe'));
-    const targetPath = path.join(CWD, exeName);
-
-    const shortcutOptions = {
-      target: targetPath,
-      cwd: CWD,
-      description: packageJson.description,
-      icon: targetPath,
-      iconIndex: 0,
-      appUserModelId: appId
-    };
-
-    let needsAction = false;
-    let operation = 'create';
-
-    if (fs.existsSync(shortcutPath)) {
-      operation = 'update';
-      try {
-        const existingShortcut = shell.readShortcutLink(shortcutPath);
-        if (existingShortcut.target !== shortcutOptions.target ||
-            existingShortcut.appUserModelId !== shortcutOptions.appUserModelId ||
-            existingShortcut.cwd?.toLowerCase() !== shortcutOptions.cwd.toLowerCase() ||
-            existingShortcut.description !== shortcutOptions.description ||
-            existingShortcut.icon !== shortcutOptions.icon) {
-          needsAction = true;
-        }
-      } catch (e) {
-        console.warn('Could not read existing shortcut, will attempt to replace it.', e);
-        operation = 'replace';
-        needsAction = true;
-      }
-    } else {
-      needsAction = true; // Shortcut does not exist, so we need to create it.
-    }
-
-    if (!needsAction) {
-      return; // Shortcut exists and is already correct.
-    }
-
-    try {
-      // The second argument is the operation. It must be 'create' for new shortcuts.
-      const success = shell.writeShortcutLink(shortcutPath, operation, shortcutOptions);
-      if (success) {
-        console.log(`Desktop shortcut successfully ${operation}d.`);
-      } else {
-        console.warn(`shell.writeShortcutLink returned false for operation '${operation}'. This may be due to security software.`);
-      }
-    } catch (e) {
-      console.error(`An error occurred during shortcut operation '${operation}':`, e);
-    }
-  } catch (e) {
-    console.error('A critical error occurred during the shortcut creation process:', e);
-  }
 }
 
 function createWindow() {
@@ -153,11 +75,12 @@ function createWindow() {
   backupIpc.init(mainWindow);
   lanIpc.init(mainWindow);
   transferIpc.init(mainWindow);
+  shortcutIpc.init(mainWindow);
 }
 
 app.on('ready', () => {
   createWindow();
-  createDesktopShortcut();
+  shortcutIpc.createOrUpdateShortcutOnStartup();
 
   globalShortcut.register('Control+Shift+I', () => {
     if (mainWindow) {

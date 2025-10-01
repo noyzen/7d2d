@@ -58,3 +58,9 @@ contextBridge.exposeInMainWorld('transfer', {
     onComplete: (callback) => ipcRenderer.on('transfer:complete', (_e, result) => callback(result)),
     onActiveDownloadsUpdate: (callback) => ipcRenderer.on('transfer:active-downloads-update', (_e, downloaders) => callback(downloaders)),
 });
+
+contextBridge.exposeInMainWorld('shortcut', {
+    create: () => ipcRenderer.invoke('shortcut:create'),
+    delete: () => ipcRenderer.invoke('shortcut:delete'),
+    exists: () => ipcRenderer.invoke('shortcut:exists'),
+});

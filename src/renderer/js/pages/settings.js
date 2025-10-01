@@ -1,5 +1,5 @@
 import { settings, saveSettings } from '../state.js';
-import { formatBytes, showOperationResult, showConfirmationPrompt } from '../ui.js';
+import { formatBytes, showOperationResult, showConfirmationPrompt, showAlert, sanitizeText } from '../ui.js';
 import { rendererEvents } from '../events.js';
 
 let isBackupOperationInProgress = false;
@@ -65,9 +65,53 @@ function setupEventListeners() {
         saveSettings();
     });
 
-    document.getElementById('setting-shortcut-toggle').addEventListener('change', (e) => {
-        settings.createDesktopShortcut = e.target.checked;
-        saveSettings();
+    document.getElementById('setting-shortcut-toggle').addEventListener('change', async (e) => {
+        const toggle = e.target;
+        const shouldCreate = toggle.checked;
+
+        // Prevent immediate state change, we'll set it after user confirmation.
+        toggle.checked = !shouldCreate;
+
+        if (shouldCreate) {
+            const confirmed = await showConfirmationPrompt(
+                'Create Shortcut',
+                '<p>Do you want to create a shortcut on your desktop now?</p>',
+                'Create Now', 'Later'
+            );
+            if (confirmed) {
+                const result = await window.shortcut.create();
+                if (result.success) {
+                    await showAlert('Success', '<p>Desktop shortcut has been created.</p>');
+                } else {
+                    await showAlert('Error', `<p>Could not create shortcut:</p><p>${sanitizeText(result.error)}</p>`);
+                }
+            }
+            // Regardless of confirmation, save the setting to true so it's created on next launch
+            settings.createDesktopShortcut = true;
+            toggle.checked = true;
+            saveSettings();
+        } else { // Toggling OFF
+            const shortcutExists = await window.shortcut.exists();
+            if (shortcutExists) {
+                const confirmed = await showConfirmationPrompt(
+                    'Remove Shortcut',
+                    '<p>Do you want to remove the existing shortcut from your desktop?</p>',
+                    'Remove', 'Keep'
+                );
+                if (confirmed) {
+                    const result = await window.shortcut.delete();
+                     if (result.success) {
+                        await showAlert('Success', '<p>Desktop shortcut has been removed.</p>');
+                    } else {
+                        await showAlert('Error', `<p>Could not remove shortcut:</p><p>${sanitizeText(result.error)}</p>`);
+                    }
+                }
+            }
+            // Save setting to false
+            settings.createDesktopShortcut = false;
+            toggle.checked = false;
+            saveSettings();
+        }
     });
     
     document.getElementById('setting-sharing-toggle').addEventListener('change', (e) => {

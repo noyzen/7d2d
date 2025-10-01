@@ -48,7 +48,23 @@ function setupContextMenu() {
             }
 
             saveSettings();
-            renderModLists(); // Re-render to show new icon on the mod card.
+            
+            // Targeted update to prevent scroll jump
+            const modCard = document.querySelector(`.mod-card[data-folder-name="${contextMenuTargetMod}"]`);
+            if (modCard) {
+                const iconContainer = modCard.querySelector('.mod-label-icon-container');
+                const newLabel = settings.modLabels[contextMenuTargetMod];
+                let newIconHtml = '';
+                if (newLabel) {
+                    const icons = { safe: 'fa-shield-halved', testing: 'fa-flask-vial', broken: 'fa-triangle-exclamation' };
+                    const titles = { safe: 'Marked as Safe', testing: 'Marked as Testing', broken: 'Marked as Broken' };
+                    newIconHtml = `<i class="fa-solid ${icons[newLabel]} mod-label-icon ${newLabel}" title="${titles[newLabel]}"></i>`;
+                }
+                iconContainer.innerHTML = newIconHtml;
+            } else {
+                // Fallback in case the card isn't found (e.g., due to filtering)
+                renderModLists();
+            }
             
             contextMenu.classList.add('hidden');
             contextMenuTargetMod = null;
