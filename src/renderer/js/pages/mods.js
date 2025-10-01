@@ -173,11 +173,13 @@ function createModElement(mod, isDisplayedAsEnabled) {
         <i class="fa-solid fa-circle-check"></i>
     </div>
     <div class="mod-info">
-        <button class="mod-options-btn" title="Mod Options"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+        <div class="mod-top-right-controls">
+            <div class="mod-label-icon-container">${labelIconHtml}</div>
+            <button class="mod-options-btn" title="Mod Options"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+        </div>
         <h3 class="mod-title">
             ${!mod.isValid ? '<i class="fa-solid fa-triangle-exclamation" title="Invalid Mod"></i>' : ''}
             <span>${safeName}</span>
-            <span class="mod-label-icon-container">${labelIconHtml}</span>
         </h3>
         <div class="mod-meta">
             <p class="mod-author">by ${safeAuthor}</p>
@@ -221,8 +223,7 @@ function createModElement(mod, isDisplayedAsEnabled) {
         const result = await window.mods.toggle({ folderName: mod.folderName, enable: desiredState });
         if (result.success) {
             mod.isEnabled = desiredState;
-            const scrollPos = getEl('mod-list')?.scrollTop;
-            await loadMods(scrollPos); // Full reload to respect sorting
+            await loadMods();
             rendererEvents.emit('mods:changed');
         } else {
             await showAlert('Error', `Could not toggle mod: ${result.error}`);
@@ -246,15 +247,13 @@ function createModElement(mod, isDisplayedAsEnabled) {
         modEl.classList.add('processing');
         const result = await window.mods.applyModSet({ modSetFolderNames: selectedSet.mods });
         
-        const scrollPos = getEl('mod-list')?.scrollTop;
-
         if (result.success) {
-            await loadMods(scrollPos);
+            await loadMods();
         } else {
             await showAlert('Error', `Could not apply change: ${result.error}`);
             selectedSet.mods = originalMods;
             saveSettings();
-            await loadMods(scrollPos);
+            await loadMods();
         }
     }
   });
@@ -454,11 +453,7 @@ async function applyModList(modFolderNames, promptInfo) {
     }
     if (!confirmed) return;
 
-    const listEl = getEl('mod-list');
-    const scrollPosition = listEl ? listEl.scrollTop : 0;
-    
     isLoading = true;
-    renderModLists();
     const result = await window.mods.applyModSet({ modSetFolderNames: modFolderNames });
     if (!result.success) {
         await showAlert('Error', `Error applying mods: ${result.error}`);
@@ -466,13 +461,12 @@ async function applyModList(modFolderNames, promptInfo) {
     if (result.warnings && result.warnings.length > 0) {
         await showAlert('Warning', `<p>The mod set was applied, but with some issues:</p><ul style="text-align: left; margin-left: 20px;"><li>${result.warnings.join('</li><li>')}</li></ul>`);
     }
-    await loadMods(scrollPosition);
+    await loadMods();
     rendererEvents.emit('mods:changed');
 }
 
-async function loadMods(restoreScrollPos = null) {
+async function loadMods() {
     isLoading = true;
-    renderModLists();
     renderModCounts(0, 0);
     try {
         const { enabled, disabled } = await window.mods.get();
@@ -490,13 +484,6 @@ async function loadMods(restoreScrollPos = null) {
     renderModLists();
     renderModSets();
     renderModSetActions();
-
-    if (restoreScrollPos !== null) {
-        const listEl = getEl('mod-list');
-        if (listEl) {
-            listEl.scrollTop = restoreScrollPos;
-        }
-    }
 }
 
 function renderLabelFilterDropdown() {

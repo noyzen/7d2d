@@ -391,11 +391,16 @@
     overflow: hidden;
     position: relative; /* For options button */
 }
-.mod-options-btn {
+.mod-top-right-controls {
     position: absolute;
     top: -2px;
     right: -2px;
     z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.mod-options-btn {
     background: transparent;
     border: none;
     color: var(--fg-med);
@@ -416,7 +421,7 @@
 .mod-title {
     margin: 0; font-size: 1.05rem; display: flex; align-items: baseline;
     white-space: nowrap; overflow: hidden;
-    padding-right: 30px; /* Space for options btn */
+    padding-right: 65px; /* Space for options btn + icon */
 }
 .mod-title > span {
     overflow: hidden;
@@ -483,7 +488,6 @@
     flex-shrink: 0;
     width: 24px;
     text-align: center;
-    margin-left: 8px;
 }
 .mod-label-icon {
   font-size: 0.9em;
