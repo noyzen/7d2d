@@ -108,6 +108,18 @@ const readAllMods = () => {
             const isEnabled = fs.existsSync(enabledXmlPath);
             const xmlPath = isEnabled ? enabledXmlPath : (fs.existsSync(disabledXmlPath) ? disabledXmlPath : null);
 
+            let modDate = null;
+            try {
+                if (xmlPath) {
+                    modDate = fs.statSync(xmlPath).mtime.toISOString();
+                } else {
+                    modDate = fs.statSync(modPath).mtime.toISOString();
+                }
+            } catch (e) {
+                console.warn(`Could not get date for mod ${dirent.name}:`, e);
+                modDate = new Date(0).toISOString(); // Fallback date
+            }
+
             const baseModInfo = {
                 folderName: dirent.name,
                 name: dirent.name,
@@ -115,7 +127,8 @@ const readAllMods = () => {
                 author: 'Unknown author.',
                 version: 'N/A',
                 isValid: false,
-                isEnabled: isEnabled
+                isEnabled: isEnabled,
+                date: modDate
             };
 
             if (xmlPath) {
@@ -137,6 +150,7 @@ const readAllMods = () => {
                         version: modInfo.Version?.value || 'N/A',
                         isValid: true,
                         isEnabled: isEnabled,
+                        date: modDate,
                     };
                 } catch (e) {
                     console.error(`Error parsing ${xmlPath}:`, e);

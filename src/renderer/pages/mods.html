@@ -24,6 +24,28 @@
                     <i class="fa-solid fa-search"></i>
                     <input type="search" id="mod-search-input" placeholder="Search all mods...">
                 </div>
+                <div class="mod-filters">
+                    <div class="filter-group status-filter" role="group" aria-label="Filter by mod status">
+                        <button class="filter-btn active" data-status-filter="all" aria-pressed="true">All</button>
+                        <button class="filter-btn" data-status-filter="enabled" aria-pressed="false">Enabled</button>
+                        <button class="filter-btn" data-status-filter="disabled" aria-pressed="false">Disabled</button>
+                    </div>
+                    <div class="filter-group">
+                        <div id="label-filter-container" class="filter-dropdown-container">
+                            <button id="label-filter-btn" class="filter-btn icon-btn" title="Filter by Label" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa-solid fa-tags"></i>
+                                <span id="label-filter-count" class="filter-count hidden"></span>
+                            </button>
+                            <div id="label-filter-dropdown" class="filter-dropdown hidden" role="menu">
+                                <!-- Dynamic content -->
+                            </div>
+                        </div>
+                        <button id="sort-date-btn" class="filter-btn icon-btn" title="Sort by Date">
+                            <i class="fa-solid fa-calendar-days"></i>
+                            <i id="sort-indicator" class="fa-solid fa-arrow-down sort-indicator hidden"></i>
+                        </button>
+                    </div>
+                </div>
                 <div id="mod-counts">
                     <!-- Counts will be dynamically inserted here -->
                 </div>

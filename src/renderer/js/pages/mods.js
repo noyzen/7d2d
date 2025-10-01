@@ -8,23 +8,32 @@ let isLoading = false;
 let selectedModSetName = settings.activeModSet; // Initialize with saved setting
 let contextMenuTargetMod = null; // To store which mod the context menu is for
 
+// Filter and Sort State
+let activeStatusFilter = 'all'; // 'all', 'enabled', 'disabled'
+let activeLabelFilters = new Set();
+let dateSortDirection = 'none'; // 'none', 'desc', 'asc'
+
 function getEl(id) { return document.getElementById(id); }
 
 function setupContextMenu() {
-    const menu = getEl('mod-context-menu');
-    if (!menu) return;
+    const contextMenu = getEl('mod-context-menu');
+    const labelDropdown = getEl('label-filter-dropdown');
 
-    // Hide on click outside
+    // Combined click-outside handler
     window.addEventListener('click', (e) => {
-        // If the menu is visible and the click was not inside it, hide it.
-        // Clicks on the options buttons are handled by showContextMenu's stopPropagation.
-        if (!menu.classList.contains('hidden') && !menu.contains(e.target)) {
-            menu.classList.add('hidden');
+        // Hide context menu if clicked outside
+        if (!contextMenu.classList.contains('hidden') && !contextMenu.contains(e.target) && !e.target.closest('.mod-options-btn')) {
+            contextMenu.classList.add('hidden');
             contextMenuTargetMod = null;
+        }
+        // Hide label filter dropdown if clicked outside
+        if (!labelDropdown.classList.contains('hidden') && !labelDropdown.contains(e.target) && !e.target.closest('#label-filter-btn')) {
+            labelDropdown.classList.add('hidden');
+            getEl('label-filter-btn').setAttribute('aria-expanded', 'false');
         }
     });
 
-    menu.addEventListener('click', (e) => {
+    contextMenu.addEventListener('click', (e) => {
         const action = e.target.closest('li')?.dataset.action;
         if (action && contextMenuTargetMod) {
             const currentLabel = settings.modLabels[contextMenuTargetMod] || null;
@@ -41,8 +50,6 @@ function setupContextMenu() {
             saveSettings();
             renderModLists(); // Re-render to show new icon on the mod card.
             
-            // Hide the menu and clear state after an action is performed.
-            // This fixes the highlighting issue and is better UX.
             menu.classList.add('hidden');
             contextMenuTargetMod = null;
         }
@@ -55,7 +62,6 @@ function showContextMenu(e, modFolderName) {
     const menu = getEl('mod-context-menu');
     if (!menu) return;
 
-    // If the menu is already visible for this target, clicking again hides it.
     if (!menu.classList.contains('hidden') && contextMenuTargetMod === modFolderName) {
         menu.classList.add('hidden');
         contextMenuTargetMod = null;
@@ -65,7 +71,6 @@ function showContextMenu(e, modFolderName) {
     contextMenuTargetMod = modFolderName;
     const currentLabel = settings.modLabels[modFolderName] || null;
     
-    // Update active state on menu items
     menu.querySelectorAll('li').forEach(li => {
         li.classList.remove('active');
         if (li.dataset.action === currentLabel) {
@@ -73,32 +78,25 @@ function showContextMenu(e, modFolderName) {
         }
     });
 
-    // Momentarily show the menu to measure it, then position it.
     menu.classList.remove('hidden');
     const menuWidth = menu.offsetWidth;
     const menuHeight = menu.offsetHeight;
     
     const btnRect = e.currentTarget.getBoundingClientRect();
-    const margin = 5; // A small margin from window edges
+    const margin = 5;
 
-    // Default position: below and right-aligned with the button.
     let topPos = btnRect.bottom + margin;
     let leftPos = btnRect.right - menuWidth;
 
-    // --- Boundary checks to prevent overflow ---
-    // If overflows bottom, move to top (but only if there's space)
     if (topPos + menuHeight > window.innerHeight && (btnRect.top - menuHeight - margin) > 0) {
         topPos = btnRect.top - menuHeight - margin;
     }
-    // If it still overflows (or overflowed top), pin to top margin
     if (topPos < 0) {
         topPos = margin;
     }
-    // If overflows right, pin to right screen edge
     if (leftPos + menuWidth > window.innerWidth) {
         leftPos = window.innerWidth - menuWidth - margin;
     }
-    // If overflows left, pin to left screen edge
     if (leftPos < 0) {
         leftPos = margin;
     }
@@ -129,7 +127,6 @@ function createModElement(mod, isDisplayedAsEnabled) {
   if (!mod.isValid) modEl.classList.add('invalid');
   modEl.classList.toggle('enabled', isDisplayedAsEnabled);
 
-  // Sanitize all data from ModInfo.xml
   const safeName = sanitizeText(mod.name);
   const safeAuthor = sanitizeText(mod.author);
   const safeVersion = sanitizeText(mod.version);
@@ -173,7 +170,6 @@ function createModElement(mod, isDisplayedAsEnabled) {
   const modInfo = modEl.querySelector('.mod-info');
   const modDesc = modEl.querySelector('.mod-desc');
 
-  // Use a timeout to allow the DOM to render before checking element dimensions
   setTimeout(() => {
     if (modDesc.scrollHeight > modDesc.clientHeight) {
       const readMoreBtn = document.createElement('button');
@@ -183,7 +179,7 @@ function createModElement(mod, isDisplayedAsEnabled) {
       modInfo.appendChild(readMoreBtn);
       
       readMoreBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // Prevent toggling the mod
+        e.stopPropagation();
         showAlert(
           mod.name, 
           `<p style="text-align: left; white-space: pre-wrap; line-height: 1.6;">${safeDescription}</p>`
@@ -205,10 +201,8 @@ function createModElement(mod, isDisplayedAsEnabled) {
         const result = await window.mods.toggle({ folderName: mod.folderName, enable: desiredState });
         if (result.success) {
             mod.isEnabled = desiredState;
-            modEl.classList.toggle('enabled', mod.isEnabled);
-            const enabledCount = allMods.filter(m => m.isEnabled).length;
-            renderModCounts(enabledCount, allMods.length - enabledCount);
-            renderModSetActions();
+            const scrollPos = getEl('mod-list')?.scrollTop;
+            await loadMods(scrollPos); // Full reload to respect sorting
             rendererEvents.emit('mods:changed');
         } else {
             await showAlert('Error', `Could not toggle mod: ${result.error}`);
@@ -219,7 +213,7 @@ function createModElement(mod, isDisplayedAsEnabled) {
         if (!selectedSet) return;
         
         const modInSet = selectedSet.mods.includes(mod.folderName);
-        const originalMods = [...selectedSet.mods]; // Backup for revert on failure
+        const originalMods = [...selectedSet.mods];
 
         if (modInSet) {
             selectedSet.mods = selectedSet.mods.filter(m => m !== mod.folderName);
@@ -238,10 +232,8 @@ function createModElement(mod, isDisplayedAsEnabled) {
             await loadMods(scrollPos);
         } else {
             await showAlert('Error', `Could not apply change: ${result.error}`);
-            // Revert the change in memory
             selectedSet.mods = originalMods;
             saveSettings();
-            // Reload UI to show reverted state
             await loadMods(scrollPos);
         }
     }
@@ -277,13 +269,10 @@ function renderModSets() {
         setCard.addEventListener('click', (e) => {
             if (e.target.closest('.delete-set-btn')) return;
 
-            // Toggle selection logic
             if (selectedModSetName === set.name) {
-                // If clicking the active set, deselect it
                 selectedModSetName = null;
                 settings.activeModSet = null;
             } else {
-                // Otherwise, select the new set
                 selectedModSetName = set.name;
                 settings.activeModSet = set.name;
             }
@@ -374,29 +363,55 @@ function renderModLists() {
         return;
     }
 
-    const filteredList = allMods.filter(mod => {
-        const query = searchQuery.toLowerCase();
-        return mod.name.toLowerCase().includes(query) ||
-               mod.author.toLowerCase().includes(query) ||
-               mod.description.toLowerCase().includes(query) ||
-               mod.folderName.toLowerCase().includes(query);
-    });
+    let processedMods = [...allMods];
 
-    // Determine which set of mods to use for display
+    // Search filter
+    if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        processedMods = processedMods.filter(mod => 
+            mod.name.toLowerCase().includes(query) ||
+            mod.author.toLowerCase().includes(query) ||
+            mod.description.toLowerCase().includes(query) ||
+            mod.folderName.toLowerCase().includes(query)
+        );
+    }
+    
+    // Status filter
+    if (activeStatusFilter === 'enabled') {
+        processedMods = processedMods.filter(mod => mod.isEnabled);
+    } else if (activeStatusFilter === 'disabled') {
+        processedMods = processedMods.filter(mod => !mod.isEnabled);
+    }
+
+    // Label filter
+    if (activeLabelFilters.size > 0) {
+        processedMods = processedMods.filter(mod => {
+            const label = settings.modLabels[mod.folderName];
+            return label && activeLabelFilters.has(label);
+        });
+    }
+
+    // Date sort
+    if (dateSortDirection !== 'none') {
+        processedMods.sort((a, b) => {
+            const dateA = a.date ? new Date(a.date) : new Date(0);
+            const dateB = b.date ? new Date(b.date) : new Date(0);
+            return dateSortDirection === 'desc' ? dateB - dateA : dateA - dateB;
+        });
+    }
+
     const selectedSetData = settings.modSets.find(s => s.name === selectedModSetName);
     const setModsForDisplay = selectedSetData ? new Set(selectedSetData.mods) : null;
 
-    if (filteredList.length > 0) {
-        filteredList.forEach(mod => {
-            // In manual mode, use the actual mod.isEnabled state.
-            // In set mode, check if the mod is in the selected set's list.
+    if (processedMods.length > 0) {
+        processedMods.forEach(mod => {
             const isDisplayedAsEnabled = (selectedModSetName === null)
                 ? mod.isEnabled
                 : setModsForDisplay.has(mod.folderName);
             listEl.appendChild(createModElement(mod, isDisplayedAsEnabled));
         });
     } else {
-        listEl.innerHTML = `<p class="no-mods">No mods found.</p>`;
+        listEl.innerHTML = `<p class="no-mods">No mods match your filters.</p>`;
     }
     listEl.scrollTop = scrollPosition;
 }
@@ -464,9 +479,110 @@ async function loadMods(restoreScrollPos = null) {
     }
 }
 
+function renderLabelFilterDropdown() {
+    const dropdown = getEl('label-filter-dropdown');
+    const labels = [
+        { id: 'safe', icon: 'fa-shield-halved' },
+        { id: 'testing', icon: 'fa-flask-vial' },
+        { id: 'broken', icon: 'fa-triangle-exclamation' }
+    ];
+    dropdown.innerHTML = `
+        <ul>
+            ${labels.map(label => `
+                <li>
+                    <label for="label-filter-${label.id}">
+                        <input type="checkbox" id="label-filter-${label.id}" data-label-filter="${label.id}" ${activeLabelFilters.has(label.id) ? 'checked' : ''}>
+                        <i class="fa-solid ${label.icon} mod-label-icon ${label.id}"></i>
+                        <span>${label.id.charAt(0).toUpperCase() + label.id.slice(1)}</span>
+                    </label>
+                </li>
+            `).join('')}
+            <li class="separator"></li>
+            <li><button id="clear-label-filters-btn">Clear All</button></li>
+        </ul>
+    `;
+
+    dropdown.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+            const label = checkbox.dataset.labelFilter;
+            if (checkbox.checked) {
+                activeLabelFilters.add(label);
+            } else {
+                activeLabelFilters.delete(label);
+            }
+            renderModLists();
+            updateLabelFilterButton();
+        });
+    });
+
+    getEl('clear-label-filters-btn').addEventListener('click', () => {
+        activeLabelFilters.clear();
+        dropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+        renderModLists();
+        updateLabelFilterButton();
+    });
+}
+
+function updateLabelFilterButton() {
+    const countEl = getEl('label-filter-count');
+    if (activeLabelFilters.size > 0) {
+        countEl.textContent = activeLabelFilters.size;
+        countEl.classList.remove('hidden');
+    } else {
+        countEl.classList.add('hidden');
+    }
+}
+
+function setupFilterListeners() {
+    // Status Filter
+    getEl('page-mods').querySelectorAll('.status-filter .filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.classList.contains('active')) return;
+            getEl('page-mods').querySelector('.status-filter .filter-btn.active').classList.remove('active');
+            getEl('page-mods').querySelector('.status-filter .filter-btn.active').setAttribute('aria-pressed', 'false');
+            
+            btn.classList.add('active');
+            btn.setAttribute('aria-pressed', 'true');
+            activeStatusFilter = btn.dataset.statusFilter;
+            renderModLists();
+        });
+    });
+
+    // Label Filter
+    const labelFilterBtn = getEl('label-filter-btn');
+    const labelDropdown = getEl('label-filter-dropdown');
+    labelFilterBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isHidden = labelDropdown.classList.toggle('hidden');
+        labelFilterBtn.setAttribute('aria-expanded', String(!isHidden));
+        if (!isHidden) {
+            renderLabelFilterDropdown();
+        }
+    });
+    
+    // Date Sort
+    const sortBtn = getEl('sort-date-btn');
+    const sortIndicator = getEl('sort-indicator');
+    sortBtn.addEventListener('click', () => {
+        sortBtn.classList.remove('asc', 'desc');
+        if (dateSortDirection === 'none') {
+            dateSortDirection = 'desc';
+            sortIndicator.classList.remove('hidden');
+            sortBtn.classList.add('desc');
+        } else if (dateSortDirection === 'desc') {
+            dateSortDirection = 'asc';
+            sortBtn.classList.remove('desc');
+            sortBtn.classList.add('asc');
+        } else {
+            dateSortDirection = 'none';
+            sortIndicator.classList.add('hidden');
+        }
+        renderModLists();
+    });
+}
+
 function setupEventListeners() {
     const searchInput = getEl('mod-search-input');
-    // On page load/re-init, ensure the input's value matches our state.
     searchInput.value = searchQuery;
     searchInput.addEventListener('input', (e) => {
         searchQuery = e.target.value;
@@ -516,11 +632,13 @@ function setupEventListeners() {
 export function init() {
     setupEventListeners();
     setupContextMenu();
+    setupFilterListeners();
     loadMods();
 }
 
 export function unmount() {
-    // Clear search query when navigating away from the page
-    // to prevent the filter from being applied on next visit.
     searchQuery = '';
+    activeStatusFilter = 'all';
+    activeLabelFilters.clear();
+    dateSortDirection = 'none';
 }
