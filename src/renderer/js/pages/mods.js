@@ -16,7 +16,9 @@ function setupContextMenu() {
 
     // Hide on click outside
     window.addEventListener('click', (e) => {
-        if (!menu.contains(e.target)) {
+        // If the menu is visible and the click was not inside it, hide it.
+        // Clicks on the options buttons are handled by showContextMenu's stopPropagation.
+        if (!menu.classList.contains('hidden') && !menu.contains(e.target)) {
             menu.classList.add('hidden');
             contextMenuTargetMod = null;
         }
@@ -30,29 +32,40 @@ function setupContextMenu() {
             if (action === 'clear') {
                 delete settings.modLabels[contextMenuTargetMod];
             } else if (action === currentLabel) {
-                // If clicking the same label again, clear it.
+                // If clicking the same label again, clear it (toggle off).
                 delete settings.modLabels[contextMenuTargetMod];
             } else {
                 settings.modLabels[contextMenuTargetMod] = action;
             }
 
             saveSettings();
-            // Re-render the mod lists to update the UI
-            renderModLists();
+            renderModLists(); // Re-render to show new icon on the mod card.
+            
+            // Hide the menu and clear state after an action is performed.
+            // This fixes the highlighting issue and is better UX.
+            menu.classList.add('hidden');
+            contextMenuTargetMod = null;
         }
     });
 }
 
 function showContextMenu(e, modFolderName) {
     e.preventDefault();
-    e.stopPropagation(); // Prevent the window click listener from firing immediately
+    e.stopPropagation();
     const menu = getEl('mod-context-menu');
     if (!menu) return;
+
+    // If the menu is already visible for this target, clicking again hides it.
+    if (!menu.classList.contains('hidden') && contextMenuTargetMod === modFolderName) {
+        menu.classList.add('hidden');
+        contextMenuTargetMod = null;
+        return;
+    }
 
     contextMenuTargetMod = modFolderName;
     const currentLabel = settings.modLabels[modFolderName] || null;
     
-    // Update active state
+    // Update active state on menu items
     menu.querySelectorAll('li').forEach(li => {
         li.classList.remove('active');
         if (li.dataset.action === currentLabel) {
@@ -60,20 +73,38 @@ function showContextMenu(e, modFolderName) {
         }
     });
 
-    // Position and show menu
-    const btnRect = e.currentTarget.getBoundingClientRect();
-    menu.style.top = `${btnRect.bottom + 5}px`;
-    menu.style.left = `${btnRect.right - menu.offsetWidth}px`;
+    // Momentarily show the menu to measure it, then position it.
     menu.classList.remove('hidden');
+    const menuWidth = menu.offsetWidth;
+    const menuHeight = menu.offsetHeight;
+    
+    const btnRect = e.currentTarget.getBoundingClientRect();
+    const margin = 5; // A small margin from window edges
 
-    // Prevent menu from going off-screen
-    const menuRect = menu.getBoundingClientRect();
-    if (menuRect.bottom > window.innerHeight) {
-        menu.style.top = `${btnRect.top - menuRect.height - 5}px`;
+    // Default position: below and right-aligned with the button.
+    let topPos = btnRect.bottom + margin;
+    let leftPos = btnRect.right - menuWidth;
+
+    // --- Boundary checks to prevent overflow ---
+    // If overflows bottom, move to top (but only if there's space)
+    if (topPos + menuHeight > window.innerHeight && (btnRect.top - menuHeight - margin) > 0) {
+        topPos = btnRect.top - menuHeight - margin;
     }
-    if (menuRect.left < 0) {
-        menu.style.left = `${btnRect.left}px`;
+    // If it still overflows (or overflowed top), pin to top margin
+    if (topPos < 0) {
+        topPos = margin;
     }
+    // If overflows right, pin to right screen edge
+    if (leftPos + menuWidth > window.innerWidth) {
+        leftPos = window.innerWidth - menuWidth - margin;
+    }
+    // If overflows left, pin to left screen edge
+    if (leftPos < 0) {
+        leftPos = margin;
+    }
+
+    menu.style.top = `${topPos}px`;
+    menu.style.left = `${leftPos}px`;
 }
 
 function renderModCounts(enabledCount, disabledCount) {
@@ -165,8 +196,8 @@ function createModElement(mod, isDisplayedAsEnabled) {
     showContextMenu(e, mod.folderName);
   });
 
-  modEl.addEventListener('click', async () => {
-    if (modEl.classList.contains('processing')) return;
+  modEl.addEventListener('click', async (e) => {
+    if (modEl.classList.contains('processing') || e.target.closest('.mod-options-btn') || e.target.closest('.mod-read-more')) return;
 
     if (selectedModSetName === null) { // Manual Mode: Directly toggle the mod's file state
         modEl.classList.add('processing');
